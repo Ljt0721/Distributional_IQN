@@ -10,7 +10,7 @@ with open(filename,"r") as f:
     exp_data = json.load(f)
 
 episode_id = 0
-agent = "IQN"
+agent = "adaptive_IQN"
 
 ev = env_visualizer.EnvVisualizer()
 

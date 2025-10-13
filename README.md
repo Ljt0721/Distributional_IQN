@@ -60,3 +60,9 @@ We provide the implementation of agents using Artificial Potential Field (APF) a
 ```
 python run_experiments.py
 ```
+
+To visaulize an experiment episode, set filename, episode_id, agent in visualize_exp_episode.py to corresponding experiment data file, the id and agent of episode to visualize.
+
+```
+python visualize_exp_episode.py
+```
