@@ -145,7 +145,7 @@ class Robot:
             self.sonar.reflections.append([x,y,0])
             
             # compute the beam reflection given obstcales
-            reflection_dist = np.infty  
+            reflection_dist = np.inf
             for obs in obstacles:
                 if np.abs(angle - np.pi/2) < 1e-03 or \
                     np.abs(angle - 3*np.pi/2) < 1e-03:

@@ -1,0 +1,1593 @@
+
+
+==================================================
+FILENAME: IQN参考文章.pdf
+==================================================
+
+
+--- Page 1 ---
+Robust Unmanned Surface Vehicle Navigation with Distributional
+Reinforcement Learning
+Xi Lin, John McConnell and Brendan Englot
+Abstract— Autonomous navigation of Unmanned Surface
+Vehicles (USV) in marine environments with current flows is
+challenging, and few prior works have addressed the sensor-
+based navigation problem in such environments under no prior
+knowledge of the current flow and obstacles. We propose a
+Distributional Reinforcement Learning (RL) based local path
+planner that learns return distributions which capture the
+uncertainty of action outcomes, and an adaptive algorithm
+that automatically tunes the level of sensitivity to the risk
+in the environment. The proposed planner achieves a more
+stable learning performance and converges to safer policies than
+a traditional RL based planner. Computational experiments
+demonstrate that comparing to a traditional RL based planner
+and classical local planning methods such as Artificial Potential
+Fields and the Bug Algorithm, the proposed planner is robust
+against environmental flows, and is able to plan trajectories
+that are superior in safety, time and energy consumption.
+I. I NTRODUCTION
+The operation of autonomous vehicles in marine environ-
+ments is sensitive to currents [1], and navigating safely and
+efficiently under the influence of current flow is challenging.
+In recent years, several methods [2], [3], [4] have been
+proposed to deal with the global path planning problem for
+Unmanned Surface Vehicles (USV) given knowledge of the
+current flow field. However, few prior works have focused on
+the local path planning problem for USVs in environments
+with unknown current flows. In this work, inspired by recent
+USV competitions [5] and by the challenges of navigating in
+river rapids, we consider the sensor-based local navigation
+problem for USVs in simulated marine environments with
+no prior knowledge of the current flow and obstacles.
+Reinforcement Learning (RL) shows the ability to acquire
+high-performance policies to operate in unseen environments
+by learning through experiences of interaction with training
+environments given no prior information [6]. In the last
+decade, Deep Reinforcement Learning (DRL) combining RL
+with deep neural network architectures has been widely used
+to solve practical problems with high-dimensional sensory
+inputs, which can be efficiently executed via neural network
+inference. Compared to a traditional DRL method that only
+learns the expected return, a Distributional Reinforcement
+Learning (Distributional RL) method is shown to provide
+a more stable learning behavior in environments with high
+uncertainty as it learns return distributions [7]. In addition,
+risk measures can be applied to adjust the level of sensitivity
+Xi Lin, John McConnell and Brendan Englot are with the
+Department of Mechanical Engineering, Stevens Institute of
+Technology, 1 Castle Point Terrace, Hoboken, NJ 07030, USA,
+{xlin26,jmcconn1,benglot}@stevens.edu
+Fig. 1: Comparison of planned trajectories. Planned trajec-
+tories of the proposed Distributional RL based path planner
+and classical planners in a simulated marine environment
+with no prior knowledge of the current flow field and
+obstacles, where darker color indicates faster current flows.
+Arrows show the velocity of the current in specific locations.
+to aleatoric uncertainty in learned distributions and enhance
+the safety performance of a Distributional RL agent [8].
+We propose a Distributional RL based local path planner to
+address USV sensor-based navigation tasks under unknown
+obstacles and current flows, as well as an algorithm that ad-
+justs the level of sensitivity towards collision risk and further
+improves the task success rate. The proposed method exhibits
+a more stable learning performance and converges to safer
+policies compared to a traditional DRL-based local planner.
+We compare the proposed method’s performance to classical
+methods including Artificial Potential Fields [9], [10] and
+the Bug Algorithm [11], [12], which have been applied to
+solve the USV local path planning problem in stable marine
+environments with minimal current disturbances. It is shown
+in Figure 1 that the performances of Artificial Potential fields
+and the Bug Algorithm are vulnerable to unknown current
+flows, and result in unsafe, zig-zag trajectories. On the
+contrary, the proposed Distributional RL planner is able to
+plan a much smoother trajectory under current disturbances
+while keeping a safe distance from detected obstacles, thus
+arXiv:2307.16240v1  [cs.RO]  30 Jul 2023
+--- Page 2 ---
+achieving superior performance in safety, time and energy
+consumption. Our contributions are summarized as follows:
+• To our knowledge, the first Distributional RL based path
+planner for USV sensor-based navigation in environ-
+ments with unknown current flows and obstacles.
+• Simulated experiments that show superior performance
+in safety, time and energy consumption vs. traditional
+RL and classical reactive planning algorithms.
+• The software implementation of our approach and a
+simulation environment for studying decision making
+in USV navigation (amidst unknown currents and
+obstacles) have been made freely available at https:
+//github.com/RobustFieldAutonomyLab/
+Distributional_RL_Navigation.
+The rest of this paper is organized as follows: Section
+II introduces related work, highlighting relevant local path
+planning methods; Section III describes the RL problem
+formulation; Section IV introduces the methodology of this
+work; Section V introduces baseline approaches and dis-
+cusses experimental results; Section VI concludes the paper.
+II. R ELATED WORKS
+Khatib [13] proposed to perform mobile robot navigation
+with an Artificial Potential Field (APF), which creates at-
+tractive force towards the goal and repulsive force to avoid
+obstacles. However, the traditional APF method may fail
+when local minima are present, or the goal is close to
+obstacles, and solutions such as virtual local target [14],
+deterministic annealing [15], dynamic window [16], and
+additional repulsive force [17], [18] were proposed to address
+this problem. Some works focus on improving performance
+of the APF method in dynamic environments, by using a
+new potential function that considers the relative position and
+velocity of the robot with respect to the target and obstacles
+[19], or evolutionary algorithms [20], [21].
+Bug Algorithms (BA) have been used for reactive mobile
+robot path planning since the 1980s [22]. Lumelsky et al. [23]
+proposed the Bug1 and Bug2 algorithms, which use a point
+robot model and zero-range sensor for obstacle detection,
+and exhibit two behaviors: the robot moves in a straight line
+to the goal and follows the obstacle boundary as soon as it
+encounters an obstacle. The Bug2 algorithm has been applied
+to the local navigation problem on platforms such as wheeled
+robots [24], quadrotors [25] and USVs [12]. Alg1 and Alg2
+[26], Rev1 and Rev2 [27] improve the performance of bug
+algorithms by switching the obstacle following direction
+when the robot is in a previously visited location. VisBug
+[28], [29] and TangentBug [30] use range sensors for obstacle
+detection and find shorter paths to the goal [12].
+Deep Reinforcement Learning (DRL) based planners have
+shown strong ability to navigate in unknown environments
+in recent years. Tai et al. [31] trained a DRL agent for
+navigation in unseen indoor environments without any colli-
+sions. Zhang et al. [32] and Josef et al. [33] showed robust
+performance of DRL planners on Unmanned Ground Vehicle
+(UGV) navigation in simulated unknown rough terrain where
+the surface normal could abruptly change. Cheng et al.
+[34] proposed a DRL based path planner to control an
+underactuated USV under unknown environment dynamics.
+Xu et al. [35] developed a DRL agent for a USV to avoid
+dynamic obstacles such as boats.
+More recently, Distributional RL [7] methods have been
+used to learn risk-aware navigation policies for enhanced
+safety. Choi et al. [36] proposed a novel Distributional RL
+algorithm for indoor navigation tasks, which shows superior
+performance in safety relative to traditional DRL methods, as
+well as adjustable sensitivity towards collision risks. Kamran
+et al. [37] demonstrated that a Distributional RL based policy
+reduces driving time compared to traditional DRL methods,
+and requires much less safety interference than rule-based
+policies in autonomous driving scenarios. Liu et al. [38]
+proposed an algorithm that automatically adjusts the level
+of sensitivity toward risk of a Distributional RL planner for
+nano drone navigation.
+III. P ROBLEM FORMULATION
+We formulate the USV navigation problem as a Markov
+Decision Process (S, A, P, R, γ), where S and A are the sets
+of states and actions. At each time step t, the agent receives
+an observation of the current state st ∈ S, and selects an
+action at ∈ A. This causes the agent to transition to the state
+st+1 ∼ P(·|st, at) , and the agent receives an observation of
+st+1, as well as a reward rt+1 = R(st+1, at+1). A common
+way to find an optimal policy in RL is to maximize the
+expected future return Qπ.
+Qπ(s, a) = Eπ[
+∞X
+k=0
+γkrt+k+1|st = s, at = a] (1)
+This is also known as the action-value function, which starts
+with a state-action pair (st, at) and follows the policy π
+thereafter. Discount factor γ ∈ [0, 1) controls the effect of
+future rewards.
+Qπ(s, a) = E[R(s, a)] + γE[Qπ(s′, a′)] (2)
+T Q(s, a) := E[R(s, a)] + γE[max
+a′
+Q(s′, a′)] (3)
+The relation between Qπ and its successors satisfies the
+Bellman equation (Eq. (2)), where s′ ∼ P(·|s, a), and
+a′ ∼ π(·|s′). An optimal policy can be derived using the
+Bellman optimality operator (Eq. (3)).
+IV. M ETHODOLOGY
+A. Traditional DRL
+We choose DQN [39] as the traditional DRL baseline, and
+use the implementation from the Stable-Baselines3 project
+[40]. DQN parameterizes an approximate action-value func-
+tion (Eq. (1)) as Q(s, a; θ) with a neural network model,
+and learns an optimal policy by performing optimization on
+a loss function (Eq. (4)) based on Temporal Difference (TD)
+error, where (s, a, r, s′) are samples from experiences.
+LDQN = E[(r + γ max
+a′
+Q(s′, a′; θ−) − Q(s, a; θ))2] (4)
+--- Page 3 ---
+B. Distributional RL
+Instead of the expected return (Eq. (1)), Distributional RL
+algorithms [7] focus on the return distribution, which satisfies
+the distributional Bellman equation (Eq. (5)), where Zπ(s, a)
+is a random variable that satisfies Qπ(s, a) = E[Zπ(s, a)].
+Similarly, the distributional Bellman optimality equation (Eq.
+(6)) is used in this case.
+Zπ(s, a)
+D
+= R(s, a) + γZπ(s′, a′) (5)
+T Z(s, a) :
+D
+= R(s, a) + γZπ(s′, argmaxa′ E[Z(s′, a′)]) (6)
+The proposed Distributional RL based path planner uses
+Implicit Quantile Networks (IQN) [8], and we use the
+implementation from [41]. IQN uses the quantile function
+Z, denoted as Zτ := F−1
+Z (τ), where τ ∼ U([0, 1]), and a
+distortion risk measure β : [0, 1] → [0, 1] to define a distorted
+expectation.
+Qβ(s, a) = Eτ∼U([0,1])[Zβ(τ)(s, a)] (7)
+Then the risk-sensitive policy can be expressed as πβ(s) =
+argmaxaQβ(s, a), and approximated by K samples of ˜τ ∼
+U([0, 1]):
+˜πβ(s) = argmaxa
+1
+K
+KX
+k=1
+Zβ(˜τk)(s, a). (8)
+The IQN loss function (Eq. (11)) is constructed with the
+sampled temporal difference (TD) error (Eq. (9)) and the
+quantile Huber loss (Eq. (10)).
+δτi,τ′
+j = r + γZτ′ (s′, πβ(s′)) − Zτ (s, a) (9)
+ρκ
+τ (u) = |τ − δ{u<0}|(Lκ(u)/κ),
+where Lκ(u) =
+ 1
+2 u2, if |u| ≤κ
+κ(|u| −1
+2 κ), otherwise
+(10)
+LIQN = 1
+N′
+NX
+i=1
+N′
+X
+j=1
+ρκ
+τi (δτi,τ′
+j ) (11)
+C. USV Navigation Environment
+We design a simulated marine environment with envi-
+ronmental flows and static obstacles, where the robot is
+required to navigate under flow disturbances and reach the
+goal without colliding with any obstacles.
+The Rankine vortex model [42] (Eq. (12)) is used to create
+the flows, where a rigid body rotation within the vortex core
+of radius r0 is assumed, and Γ is the circulation strength of
+the vortex.
+vr = 0, v θ(r) = Γ
+2π
+ r/r2
+0, if r ≤ r0
+1/r, if r > r0
+(12)
+The angular velocity of the vortex core Ω = Γ/(2πr2
+0), and
+the linear velocity at the edge of vortex core vedge = Ωr0.
+The flow velocity at a specific location is approximated by
+superimposing the effects of nearby vortices.
+We use a simplified USV model, the pose of which can be
+represented as (x, y, θ), where (x, y) are the global Cartesian
+coordinates of the robot, and θ is its orientation. To consider
+the effects of current flow on robot motion, the kinematic
+model described in [43] is used, which treats the robot as a
+point particle, since its dimension is much smaller than the
+length of its trajectory and the scale of current flow.
+dX(t)
+dt = V(t) = VC(X(t)) + VS(t) (13)
+In Eq. (13), V(t) is the total velocity of the robot, VC(X(t))
+is the current flow velocity at robot position X(t), and VS(t)
+is the robot steering velocity.
+D. States and Observations
+The full state consists of robot position X(t), robot steer-
+ing velocity VS(t), current flow field VC(X), the positions
+and sizes of all obstacles, and the goal location. In this work,
+the robot only receives a partial observation of the full state
+from onboard sensors, Ot = (Ovelocity, Ogoal, OLiDAR), where
+Ovelocity is the robot’s seafloor-relative velocity measured
+by Doppler Velocity Log (DVL), Ogoal is the goal position
+in the robot frame computed with the aid of an inertial
+measurement unit (IMU), compass and GPS, and OLiDAR
+are LiDAR reflections indicating any obstacles ahead. The
+LiDAR range is d0 = 10 meters. These assumptions are
+inspired by the class of USV required to successfully detect
+and avoid obstacles in the Maritime RobotX competition
+[44]. An observation example is shown in Fig. 5.
+E. Actions
+The action used to control the robot motion is the change
+in steering velocity VS. We assume that the rates of change
+in both the magnitude and direction of VS are constant
+across one control time step, hence an action is given in
+the form of at = ( a, w), where a is the rate of change
+in velocity magnitude, and w is the rate of change in
+velocity direction. For convenience, a and w are referred
+to as linear acceleration and angular velocity. We use a ∈
+{−0.4, 0.0, 0.4} m/s2, and w ∈ {−0.52, 0.0.0.52} rad/s.
+The forward speed is clipped to [0, vmax].
+F . Reward
+The reward function is designed to encourage the learning
+agent to move towards the goal while avoiding obstacles,
+which is shown in Equation (14).
+rt =
+
+
+
+rbase,t + rcollision, if collide at t
+rbase,t + rgoal, if reach goal at t
+rbase,t = rstep + α(dt−1 − dt), otherwise
+(14)
+dt represents the distance between the robot and the goal at
+t. We use rstep = −1.0, rcollision = −50.0, rgoal = 100.0, and
+α = 1.0 in our computational experiments.
+G. Network Architecture
+The network architectures used by our DQN and IQN
+agents are shown in Figure 2. Observations from different
+sources are encoded separately as different features, which
+are then concatenated into a general one. Compared to
+the DQN network model, IQN employs an additional co-
+sine function to embed the quantile input [8], and we use
+--- Page 4 ---
+Fig. 2: Network models. Architectures used by DQN (left)
+and IQN (right). FC, COS and ⊙ stand for fully connected
+layer, cosine embedding layer and element-wise product.
+TABLE I: Hyperparameters used by IQN and DQN during
+the learning process.
+Parameter Learning Buffer Mini-batch Discount
+rate size size factor
+Value 1 × 10−4 1 × 106 32 0.99
+conditional value-at-risk (CVaR, Eq. (15)) as the distortion
+function. The resulting cosine features are shown in Eq. (16).
+f(τ; ϕ) = ϕτ, ϕ ∈ (0, 1], τ ∼ U([0, 1]) (15)
+[cos(π · 0 · f(τ; ϕ)), . . . ,cos(π · 63 · f(τ; ϕ))] (16)
+During the training process, ϕ = 1.0, the number of samples
+in Eq. (11) is N = N′ = 8 , and the number of samples
+in Eq. (8) is K = 32. Given an observation, outputs of the
+DQN network are action values corresponding to actions,
+and those of the IQN network are sets of quantile points that
+reflect the return distributions of their respective actions.
+Both agents use ϵ-greedy as their behavior policy. The
+control time step of an action is 1.0 seconds. The exploration
+rate starts at 1.0, and decreases linearly to 0.05 during the
+initial 10% of total training time steps, then stays at 0.05
+thereafter. Other hyperparameters shared by both agents are
+shown in Table I.
+H. Model Training
+As we focus on the local path planning problem, all
+simulation environments are of the size 50m × 50m. We
+employ the idea of curriculum training and gradually increase
+the level of difficulty in the training environment using the
+schedule shown in Table II. Example environments used
+during each phase are shown in Figure 3.
+When initializing a training episode, vortices of random
+position, spinning direction, and strength, as well as circular
+obstacles of random position and size are generated in the
+training environment. The linear velocity at the edge of
+vortex core, vedge, and the radius of obstacle are sampled
+uniformly from [5, 10]m/s and [1, 3]m respectively. The start
+and goal positions are randomly generated such that the dis-
+tance between them is not smaller than the given threshold.
+The initial robot pose and forward speed are also randomly
+generated. An episode is terminated when the robot collides
+TABLE II: Training Schedule. Environment hyperparame-
+ters used in curriculum training.
+Parameter 1st million 2nd million 3rd million
+Number of vortices 4 6 8
+Number of obstacles 6 8 10
+Min distance between 30.0 35.0 40.0start and goal
+Fig. 3: Training environments. Examples of training envi-
+ronments randomly generated for use during the 1st, 2nd and
+3rd million steps (shown from left to right).
+with any obstacles, reaches the goal, or has moved for more
+than 1,000 steps, then a new episode is created.
+To assess agents’ performances during the training, thirty
+random environments are created in advance, which consist
+of three sets of ten environments generated according to
+parameters shown in each column in Table II, except the
+min distance between start and goal. Every evaluation envi-
+ronment uses the same start and goal located respectively
+at the lower left and top right of the map. Every agent
+is evaluated on all thirty environments after every 10,000
+steps of training. For both IQN and DQN, we train thirty
+models with different random seeds, and visualize the overall
+learning performance in Figure 4.
+Fig. 4: Learning performances of IQN and DQN . In each
+curve, the solid line and bandwidth represent the mean and
+standard error of evaluation results over thirty models trained
+with different seeds.
+--- Page 5 ---
+The training processes of all models were run on an Nvidia
+RTX 3090 GPU. It can be seen that IQN exhibits a more
+stable learning performance and has higher scores in terms
+of cumulative reward and success rate.
+V. E XPERIMENTS
+To obtain a more comprehensive understanding of the
+performance of our trained agents, two sets of evaluation
+experiments using the number of vortexes and obstacles
+corresponding to the lowest and highest level of difficulty
+in Table II are performed, denoted as Test Case 1 and Test
+Case 2, and the results are summarized in Table III. Each set
+of experiments uses 500 randomly generated environments,
+and similar to the evaluation environments during the training
+process, each environment has a fixed start and goal located
+respectively at the lower left and top right of the map. The
+control time step of an action is set to 0.5 seconds. A square
+boundary is set in each environment, and the robot moving
+outside the bounded area is considered an out of bounds
+failure. The energy consumption is computed by summing
+up the magnitude of all action commands.
+IQN and DQN agents used in the evaluation experiments
+are randomly selected from trained models. We evaluate
+the IQN agent with fixed CVaR threshold values ϕ =
+{0.25, 0.50, 0.75, 1.0} that represent different levels of sen-
+sitivity towards risk. In addition, we also try an adaptive
+function of ϕ shown in Eq. (17).
+ϕ =
+ min(d(X, XO))/d0, if min(d(X, XO)) ≤ d0
+1.0, if min(d(X, XO)) > d0
+(17)
+X and XO are positions of the robot and all obstacles.
+Thus the adaptive framework leads to a greedy policy when
+no obstacles are detected, and a risk sensitive policy (with
+the level of sensitivity being proportional to the minimum
+distance to obstacles) if any obstacles exist.
+A. Baseline approaches
+We also choose two classical local planning methods as
+baselines. The first one is an Artificial Potential Field (APF)
+method described in [18]. An attractive potential field Uatt
+and a repulsive potential field Urep are constructed to generate
+forces that lead the robot to the goal and repel it from
+obstacles.
+Uatt(X) = 1
+2katt · d2(X, Xg) (18)
+Urep(X) =
+ Uo(X), if d(X, Xo) ≤ d0
+0, if d(X, Xo) > d0
+where Uo(X) = 1
+2 krep( 1
+d(X,Xo) − 1
+d0
+)2dn(X, Xg)
+(19)
+In the above equations, X, Xg and Xo are positions of
+the robot, goal and an obstacle respectively, and we use
+katt = 50 .0, krep = 500 .0, and n = 2 . The total force
+F = −∇Uatt(X) − ∇Urep(X). Given an observation, each
+LiDAR reflection point is treated as an obstacle, and the
+repulsive force is the sum of contributions from all points. To
+output an action decision that is compatible with the robot,
+we compute the difference in angle between the total force
+F and the robot velocity, and map it to the angular velocity
+that causes the closest change in angle in one control step.
+We also project F to the direction of robot velocity, scale it
+by 1/m with m = 500.0, and map it to the closest linear
+acceleration.
+The second baseline is a Bug Algorithm (BA) method
+similar to VisBug [28]. It uses a simple navigation policy:
+when the robot hits an obstacle, it moves by following the
+boundary; as soon as the way to the goal is clear, the robot
+moves directly towards it. Given an observation, the tangent
+vector of the obstacle surface is approximately computed
+from LiDAR reflections, and the robot steers itself and moves
+in the same direction while keeping a safe standoff distance
+of 5 meters. Similarly, the angular velocity that minimizes
+the angle difference between desired steering direction and
+the robot velocity in one control step is chosen. The linear
+acceleration is selected such that the robot maintains a low
+speed when moving along obstacles, and the max speed when
+moving towards the goal.
+B. Results
+It can be seen in Table III that all IQN agents except ϕ =
+0.25 achieve a higher success rate than other methods, with
+lower average time and energy consumption. In addition, as
+the difficulty of environment increases, IQN agents show
+more robust performance in terms of success rate, with no
+significant increase in time and energy consumption. It can
+be seen in Figure 1 that the trajectories of APF and BA agents
+are highly affected by flow disturbances exerted by vortices.
+Hence compared to DRL agents, APF and BA have clearly
+higher time and energy consumption, especially in Test Case
+2. The lower success rate in the case of ϕ = 0.25 is related
+to the significantly higher out of bounds rate, indicating that
+the IQN agent is so conservative that it tries moving far
+enough to avoid any risks. The adaptive IQN agent has a
+higher success rate than other IQN agents, with similar time
+and energy consumption.
+Figure 5 visualizes a state where obstacles are detected
+and compares decisions made by the adaptive IQN agent
+and the greedy ( ϕ = 1.0) IQN agent. It can be seen from
+the observation plot that the goal direction is close to the
+steer direction as well as the velocity direction, and LiDAR
+reflections show a clearance between two sets of obstacles.
+Hence sticking with the current direction may get to the goal
+quickly, which is also the action selected by the greedy IQN
+agent. The adaptive IQN agent lowers the CVaR threshold
+to increase the risk sensitivity, and focuses on the worst part
+of the whole distribution. In this case, turning left is a better
+choice as it has a higher expected return value in the tail
+distribution. Additionally, the trajectories of the greedy and
+adaptive IQN agents overlap initially, since the latter one
+maintains ϕ = 1.0 and efficiently navigates to the goal when
+no obstacles are detected.
+The computation time per action decision for all methods
+is shown in Table IV. All experiments in this section were
+run on a AMD Ryzen threadripper 3970X CPU. Compared to
+the classical methods, IQN and DQN models require more
+--- Page 6 ---
+Fig. 5: An example state where adaptive IQN agent and greedy ( ϕ = 1 .0) IQN agent make different decisions .
+Observation inputs are shown at left. Trajectories of the two agents are shown in the map, where red dashed lines represent
+beams emitted by onboard LiDAR, and the red dashdot square is the boundary of the evaluation environment. In the
+distribution plots at right, green “x” markers show return values corresponding to different quantiles, and vertical lines
+indicate the mean value (red lines mark action selections).
+TABLE III: Experimental Results . Out of bounds rate is
+the ratio of the number of out of bounds failures to that of
+all episodes. Average time and energy are computed using
+the data of successful episodes only.
+(a) Test Case 1 (4 vortices and 6 obstacles)
+Agent
+success
+rate
+out of average
+time (s)
+average
+energybounds
+rate
+IQN
+adaptive 0.95 0.01 35.32 85.34
+ϕ = 0.25 0.87 0.11 36.80 86.46
+ϕ = 0.50 0.94 0.02 35.35 83.62
+ϕ = 0.75 0.94 0.02 35.43 83.14
+ϕ = 1.0 0.94 0.01 34.73 82.80
+DQN 0.88 0.02 35.58 106.16
+APF 0.90 0.01 44.58 124.47
+BA 0.66 0.00 42.31 104.35
+(b) Test Case 2 (8 vortices and 10 obstacles)
+Agent
+success
+rate
+out of average
+time (s)
+average
+energybounds
+rate
+IQN
+adaptive 0.81 0.04 36.76 93.36
+ϕ = 0.25 0.60 0.29 39.38 97.78
+ϕ = 0.50 0.76 0.09 37.39 92.85
+ϕ = 0.75 0.78 0.07 35.90 88.69
+ϕ = 1.0 0.76 0.03 35.42 87.94
+DQN 0.61 0.04 34.67 106.19
+APF 0.58 0.07 53.72 165.03
+BA 0.37 0.01 49.73 133.15
+computation in one forward pass, but their mean runtimes
+per action are still below 0.4 milliseconds. The maximum
+runtime per action of adaptive IQN is 13.12 milliseconds,
+which still allows a 75 Hz computation frequency.
+VI. C ONCLUSION
+In this paper, we propose an IQN based local path planner
+for sensor-based Unmanned Surface Vehicle (USV) naviga-
+tion in marine environments with no prior knowledge of the
+TABLE IV: Runtime per action . The mean and maximum
+runtime to compute an action decision.
+Agent mean (ms) max (ms)
+IQN
+adaptive 0.31 13.12
+ϕ = 0.25 0.28 2.11
+ϕ = 0.50 0.28 0.87
+ϕ = 0.75 0.28 1.29
+ϕ = 1.0 0.28 4.35
+DQN 0.19 4.48
+APF 0.068 0.22
+BA 0.049 1.81
+current flow field and obstacles. Compared to a DQN based
+planner, the proposed method has a more stable learning
+performance and higher scores in the cumulative reward
+and success rate during the curriculum training process.
+Experimental results show that the proposed planner achieves
+superior performance in safety, time and energy consumption
+relative to other planners based on DQN, Artificial Potential
+Fields, and the Bug Algorithm. In future work, we hope to
+explore the multi-USV navigation problem with a similar
+approach, and the extent to which the policies learned in our
+simulator across different random obstacle and vortex fields
+can transfer to USV navigation with real robot hardware.
+ACKNOWLEDGMENT
+This research was supported by the Office of Naval
+Research, grants N00014-20-1-2570 and N00014-21-1-2161.
+REFERENCES
+[1] T. Lolla, P. Haley Jr, and P. Lermusiaux, “Path planning in multi-scale
+ocean flows: Coordination and dynamic obstacles,” Ocean Modelling,
+vol. 94, pp. 46–66, 2015.
+[2] R. Song, Y . Liu, and R. Bucknall, “A multi-layered fast marching
+method for unmanned surface vehicle path planning in a time-variant
+maritime environment,” Ocean Engineering , vol. 129, pp. 301–317,
+2017.
+--- Page 7 ---
+[3] X. Guo, M. Ji, Z. Zhao, D. Wen, and W. Zhang, “Global path planning
+and multi-objective path control for unmanned surface vehicle based
+on modified particle swarm optimization (PSO) algorithm,” Ocean
+Engineering, vol. 216, no. 107693, 2020.
+[4] J. Meng, Y . Liu, R. Bucknall, W. Guo, and Z. Ji, “Anisotropic GPMP2:
+a fast continuous-time Gaussian processes based motion planner for
+unmanned surface vehicles in environments with ocean currents,”
+IEEE Transactions on Automation Science and Engineering , vol. 19,
+no. 4, pp. 3914–3931, 2022.
+[5] J. Woo, J. Lee, and N. Kim, “Obstacle avoidance and target search
+of an Autonomous Surface Vehicle for 2016 Maritime RobotX chal-
+lenge,” in Proceedings of IEEE Underwater Technology (UT) , 2017.
+[6] R. S. Sutton and A. G. Barto, Reinforcement learning: An introduction.
+MIT press, 2018.
+[7] M. G. Bellemare, W. Dabney, and R. Munos, “A distributional per-
+spective on reinforcement learning,” in International Conference on
+Machine Learning. PMLR, 2017, pp. 449–458.
+[8] W. Dabney, G. Ostrovski, D. Silver, and R. Munos, “Implicit quantile
+networks for distributional reinforcement learning,” in International
+conference on machine learning . PMLR, 2018, pp. 1096–1105.
+[9] J. Song, C. Hao, and J. Su, “Path planning for unmanned surface
+vehicle based on predictive artificial potential field,” International
+Journal of Advanced Robotic Systems , vol. 17, no. 2, 2020.
+[10] H. Sang, Y . You, X. Sun, Y . Zhou, and F. Liu, “The hybrid path
+planning algorithm based on improved A* and artificial potential field
+for unmanned surface vehicle formations,” Ocean Engineering , vol.
+223, no. 108709, 2021.
+[11] T. Wilson and S. B. Williams, “Adaptive path planning for depth-
+constrained bathymetric mapping with an autonomous surface vessel,”
+Journal of Field Robotics , vol. 35, no. 3, pp. 345–358, 2018.
+[12] D. V . Lyridis, “An improved ant colony optimization algorithm for
+unmanned surface vehicle local path planning with multi-modality
+constraints,” Ocean Engineering, vol. 241, no. 109890, 2021.
+[13] O. Khatib, “Real-time obstacle avoidance for manipulators and mobile
+robots,” The International Journal of Robotics Research , vol. 5, no. 1,
+pp. 90–98, 1986.
+[14] G. Li, A. Yamashita, H. Asama, and Y . Tamura, “An efficient improved
+artificial potential field based regression search method for robot path
+planning,” in Proceedings of the IEEE International Conference on
+Mechatronics and Automation, 2012, pp. 1227–1232.
+[15] N. S. F. Doria, E. O. Freire, and J. C. Basilio, “An algorithm inspired
+by the deterministic annealing approach to avoid local minima in
+artificial potential fields,” in Proceedings of the 16th International
+Conference on Advanced Robotics (ICAR) , 2013, pp. 1–6.
+[16] J. Sun, G. Liu, G. Tian, and J. Zhang, “Smart obstacle avoidance using
+a danger index for a dynamic environment,” Applied Sciences, vol. 9,
+no. 8, p. 1589, 2019.
+[17] T. Weerakoon, K. Ishii, and A. A. F. Nassiraei, “An artificial potential
+field based mobile robot navigation method to prevent from deadlock,”
+Journal of Artificial Intelligence and Soft Computing Research , vol. 5,
+no. 3, pp. 189–203, 2015.
+[18] X. Fan, Y . Guo, H. Liu, B. Wei, and W. Lyu, “Improved artificial
+potential field method applied for AUV path planning,” Mathematical
+Problems in Engineering , vol. 2020, pp. 1–21, 2020.
+[19] S. S. Ge and Y . J. Cui, “Dynamic motion planning for mobile robots
+using potential field method,” Autonomous robots, vol. 13, pp. 207–
+222, 2002.
+[20] O. Montiel, R. Sep ´ulveda, and U. Orozco-Rosas, “Optimal path
+planning generation for mobile robots using parallel evolutionary
+artificial potential field,” Journal of Intelligent & Robotic Systems ,
+vol. 79, pp. 237–257, 2015.
+[21] U. Orozco-Rosas, O. Montiel, and R. Sep ´ulveda, “Mobile robot
+path planning using membrane evolutionary artificial potential field,”
+Applied Soft Computing , vol. 77, pp. 236–251, 2019.
+[22] K. N. McGuire, G. C. de Croon, and K. Tuyls, “A comparative study
+of bug algorithms for robot navigation,” Robotics and Autonomous
+Systems, vol. 121, no. 103261, 2019.
+[23] V . Lumelsky and A. Stepanov, “Dynamic path planning for a mo-
+bile automaton with limited information on the environment,” IEEE
+Transactions on Automatic Control , vol. 31, no. 11, pp. 1058–1063,
+1986.
+[24] Y . Zhu, T. Zhang, J. Song, and X. Li, “A new bug-type navigation algo-
+rithm considering practical implementation issues for mobile robots,”
+in Proceedings of the IEEE International Conference on Robotics and
+Biomimetics, 2010, pp. 531–536.
+[25] R. Marino, F. Mastrogiovanni, A. Sgorbissa, and R. Zaccaria, “A
+minimalistic quadrotor navigation strategy for indoor multi-floor sce-
+narios,” in Intelligent Autonomous Systems 13: Proceedings of the 13th
+International Conference IAS-13 . Springer, 2016, pp. 1561–1570.
+[26] A. Sankaranarayanan and M. Vidyasagar, “A new path planning
+algorithm for moving a point object amidst unknown obstacles in
+a plane,” in Proceedings of the IEEE International Conference on
+Robotics and Automation (ICRA) , 1990, pp. 1930–1936.
+[27] Y . Horiuchi and H. Noborio, “Evaluation of path length made in
+sensor-based path-planning with the alternative following,” inProceed-
+ings of the IEEE International Conference on Robotics and Automation
+(ICRA), vol. 2, 2001, pp. 1728–1735.
+[28] V . Lumelsky and T. Skewis, “A paradigm for incorporating vision
+in the robot navigation function,” in Proceedings of the IEEE Inter-
+national Conference on Robotics and Automation (ICRA) , 1988, pp.
+734–739.
+[29] V . J. Lumelsky and T. Skewis, “Incorporating range sensing in the
+robot navigation function,” IEEE Transactions on Systems, Man, and
+Cybernetics, vol. 20, no. 5, pp. 1058–1069, 1990.
+[30] I. Kamon, E. Rivlin, and E. Rimon, “A new range-sensor based glob-
+ally convergent navigation algorithm for mobile robots,” in Proceed-
+ings of IEEE International Conference on Robotics and Automation
+(ICRA), vol. 1, 1996, pp. 429–435.
+[31] L. Tai, G. Paolo, and M. Liu, “Virtual-to-real deep reinforcement learn-
+ing: Continuous control of mobile robots for mapless navigation,” in
+Proceedings of the IEEE/RSJ International Conference on Intelligent
+Robots and Systems (IROS) , 2017, pp. 31–36.
+[32] K. Zhang, F. Niroui, M. Ficocelli, and G. Nejat, “Robot navigation of
+environments with unknown rough terrain using deep reinforcement
+learning,” in Proceedings of the IEEE International Symposium on
+Safety, Security, and Rescue Robotics (SSRR) , 2018, pp. 1–7.
+[33] S. Josef and A. Degani, “Deep reinforcement learning for safe local
+planning of a ground vehicle in unknown rough terrain,” IEEE
+Robotics and Automation Letters , vol. 5, no. 4, pp. 6748–6755, 2020.
+[34] Y . Cheng and W. Zhang, “Concise deep reinforcement learning ob-
+stacle avoidance for underactuated unmanned marine vessels,” Neuro-
+computing, vol. 272, pp. 63–73, 2018.
+[35] X. Xu, Y . Lu, X. Liu, and W. Zhang, “Intelligent collision avoidance
+algorithms for USVs via deep reinforcement learning under COL-
+REGs,” Ocean Engineering, vol. 217, no. 107704, 2020.
+[36] J. Choi, C. Dance, J.-E. Kim, S. Hwang, and K.-s. Park, “Risk-
+conditioned distributional soft actor-critic for risk-sensitive navi-
+gation,” in Proceedings of the IEEE International Conference on
+Robotics and Automation (ICRA) , 2021, pp. 8337–8344.
+[37] D. Kamran, T. Engelgeh, M. Busch, J. Fischer, and C. Stiller,
+“Minimizing safety interference for safe and comfortable automated
+driving with distributional reinforcement learning,” in Proceedings
+of the IEEE/RSJ International Conference on Intelligent Robots and
+Systems (IROS), 2021, pp. 1236–1243.
+[38] C. Liu, E.-J. van Kampen, and G. C. de Croon, “Adaptive risk
+tendency: Nano drone navigation in cluttered environments with dis-
+tributional reinforcement learning,” arXiv preprint arXiv:2203.14749 ,
+2022.
+[39] V . Mnih, K. Kavukcuoglu, D. Silver, A. A. Rusu, J. Veness, M. G.
+Bellemare, A. Graves, M. Riedmiller, A. K. Fidjeland, G. Ostrovski
+et al. , “Human-level control through deep reinforcement learning,”
+Nature, vol. 518, no. 7540, pp. 529–533, 2015.
+[40] A. Raffin, A. Hill, A. Gleave, A. Kanervisto, M. Ernestus, and
+N. Dormann, “Stable-baselines3: Reliable reinforcement learning
+implementations,” Journal of Machine Learning Research , vol. 22,
+no. 268, pp. 1–8, 2021. [Online]. Available: http://jmlr.org/papers/
+v22/20-1364.html
+[41] S. Dittert, “Implicit quantile networks (IQN) for distributional rein-
+forcement learning and extensions,” https://github.com/BY571/IQN,
+2020.
+[42] D. J. Acheson, Elementary Fluid Dynamics . Acoustical Society of
+America, 1991.
+[43] T. Lolla, P. F. Lermusiaux, M. P. Ueckermann, and P. J. Haley, “Time-
+optimal path planning in dynamic flows using level set equations:
+theory and schemes,” Ocean Dynamics, vol. 64, pp. 1373–1397, 2014.
+[44] L. Stanislas and M. Dunbabin, “Multimodal Sensor Fusion for Ro-
+bust Obstacle Detection and Classification in the Maritime RobotX
+Challenge,” IEEE Journal of Oceanic Engineering , vol. 44, no. 2, pp.
+343–351, 2019.
+
+==================================================
+FILENAME: RAL收录范文.pdf
+==================================================
+
+
+--- Page 1 ---
+1
+Distributional Reinforcement Learning based
+Integrated Decision Making and Control for
+Autonomous Surface Vehicles
+Xi Lin, Paul Szenher, Yewei Huang, and Brendan Englot
+Abstract—With the growing demands for Autonomous Surface
+Vehicles (ASVs) in recent years, the number of ASVs being
+deployed for various maritime missions is expected to increase
+rapidly in the near future. However, it is still challenging
+for ASVs to perform sensor-based autonomous navigation in
+obstacle-filled and congested waterways, where perception er-
+rors, closely gathered vehicles and limited maneuvering space
+near buoys may cause difficulties in following the Convention
+on the International Regulations for Preventing Collisions at
+Sea (COLREGs). To address these issues, we propose a novel
+Distributional Reinforcement Learning based navigation system
+that can work with onboard LiDAR and odometry sensors to
+generate arbitrary thrust commands in continuous action space.
+Comprehensive evaluations of the proposed system in high-
+fidelity Gazebo simulations show its ability to decide whether
+to follow COLREGs or take other beneficial actions based on
+the scenarios encountered, offering superior performance in
+navigation safety and efficiency compared to systems using state-
+of-the-art Distributional RL, non-Distributional RL and classical
+methods.
+Index Terms—Marine Robotics, Autonomous Vehicle Naviga-
+tion, Reinforcement Learning
+I. I NTRODUCTION
+Recent years have witnessed increasing demands for and
+deployments of Autonomous Surface Vehicles (ASVs), which
+motivates the development of autonomous navigation systems
+[1]. This paper considers scenarios in which multiple ASVs
+operate in congested waterways where buoys may exist, and
+aims at providing a single robust onboard ASV navigation
+system which can be deployed on multiple ASVs. Some ex-
+isting works have considered collision avoidance for multiple
+vessels with simplified vehicle and environment dynamics,
+and assumed very accurate perception in simulation [2], [3].
+Other works have verified algorithm performance in field
+experiments, but with only one autonomous vehicle and other
+vessels driven by humans or following pre-defined trajectories
+[4], [5], [6], without demonstrating performance in multi-ASV
+navigation scenarios.
+In this letter, we propose a novel and computationally
+efficient ASV navigation system that can work with onboard
+LiDAR and odometry sensors, and we demonstrate its per-
+formance in a Gazebo based simulator [7] that is capable of
+simulating complex multi-ASV navigation scenarios with re-
+This work was supported by the Office of Naval Research, Grants N00014-
+20-1-2570 and N00014-24-1-2522.
+The authors are with the Department of Mechanical Engi-
+neering, Stevens Institute of Technology, Hoboken, NJ, USA
+{xlin26,pszenher,yhuang85,benglot}@stevens.edu
+Fig. 1: The proposed navigation system . The top figure shows the
+perspective in the Gazebo simulation. The middle figure visualizes
+the segmentation result of LiDAR point clouds received by the lower
+right vehicle in the top figure. The bottom figure illustrates the
+decision making and control module of the proposed system.
+alistic environment dynamics, vehicle models, and perceptual
+sensing.
+The framework of our proposed system is shown in Figure
+1, which uses a Distributional Reinforcement Learning (Dis-
+tributional RL) agent for decision making and control of the
+vehicle given perceptual information. The Distributional RL
+agent can be represented as a deep neural network model,
+and learns the distributions of cumulative rewards related to
+different actions via trial-and-error learning [8]. The robustness
+of Distributional RL policies in the multi-ASV navigation
+problem has been demonstrated in our prior work [9], which
+uses Implicit Quantile Networks (IQN) [10].
+However, the limitations of our prior work [9] include
+a highly simplified point mass vehicle model, an idealized
+vortical flow model for environmental disturbances, and a
+perfect perception assumption. Realistic wind and wave effects
+on motion and perception were not considered. In addition,
+IQN was implemented with a predefined discrete set of motion
+commands for vehicle control, and was not able to output
+arbitrary actions in a continuous action space. In recent years,
+Distributional RL algorithms with actor-critic structures [11],
+[12], [13] have been developed to work over continuous action
+arXiv:2412.09466v1  [cs.RO]  12 Dec 2024
+--- Page 2 ---
+2
+domains. Adopting this idea, we develop a novel ASV decision
+making and control policy based on IQN employed within
+an actor-critic framework, which we denote AC-IQN, for
+continuous control in scenarios involving congested multi-
+vehicle encounters.
+The Convention on the International Regulations for Pre-
+venting Collisions at Sea (COLREGs) [14] specify rules that
+apply to two-vessel encounter situations, but it faces challenges
+such as creating conflicting actions in multi-vessel cases [15]
+and limited maneuvering space near static obstacles like buoys
+[9]. In addition, the perceived states of nearby objects may
+not be precise, and can cause false judgements concerning
+COLREGs. To address these issues, we design a reward
+function that encourages COLREGs compliant behaviors, but
+also does not penalize other collision avoidance behaviors
+that are beneficial to navigation safety and efficiency. The
+software implementation of our approach is available at
+https://github.com/RobustFieldAutonomyLab/
+Distributional_RL_Decision_and_Control. The
+main contributions of this letter are summarized as follows:
+• Proposal of an ASV decision making and control solution
+based on AC-IQN for navigating in congested multi-
+vehicle environments, under the influence of wind and
+wave disturbances on ASV motion and perception.
+• Design of a novel reward function that trains policies
+capable of both following and deviating from COLREGs
+as needed for safe and efficient ASV behavior.
+• Extensive evaluations in high-fidelity Gazebo simula-
+tions show superior navigation safety and efficiency per-
+formance over state-of-the-art Distributional RL, non-
+Distributional RL and classical baselines.
+The rest of this letter is organized as follows. A review
+of relevant literature is given in Section II. The environment
+dynamic model of the Gazebo simulator and the vehicle
+control settings we use are introduced in Section III. Section
+IV introduces the perception module of the proposed system.
+Section V describes decision and control with AC-IQN and
+other RL baselines. Section VI shows experimental results.
+Section VII concludes the letter and discusses future work.
+II. R ELATED WORKS
+Multi-vessel collision avoidance problems have been widely
+studied with the consideration of COLREGs. Naeem et al. [16]
+and Chiang et al. [17] developed COLREGs-compliant algo-
+rithms based on Artificial Potential Field (APF) and rapidly-
+exploring random tree (RRT) respectively by generating virtual
+obstacles around other vessels to prevent COLREGs-violating
+actions; Cho et al. [3] developed a rule-based system that
+specifies the roles of vessels in multi-vessel encounters and
+utilizes the probabilistic velocity obstacle method for colli-
+sion avoidance. However, system performance of these works
+is only illustrated in highly simplified simulations without
+modeling of environmental disturbances and perceptual error.
+Kuwata et al. [4] proposed an approach based on Velocity
+Obstacles (VO) and demonstrated its performance in field tests
+involving an embodied ASV and manually-driven vessels in an
+environment with dimensions of about a thousand meters, but
+the performance in congested scenarios with multiple ASVs
+is not studied. Hagen et al. [5] presented a Model Predictive
+Control (MPC) strategy that chooses actions which minimize
+the cost of COLREGs-compliant collision avoidance, showing
+field experiment results involving scenarios with two-vehicle
+encounters only.
+Some works have targeted situations where it is difficult
+to guarantee navigation safety when following COLREGs,
+proposing alternative strategies. Cho et al. [18] and Jia et
+al. [19] proposed intent inference mechanisms on other en-
+countered vehicles to decides if evasive actions are needed.
+Jeong et al. [15] focused on the multi-ASV collision avoidance
+problem in highly congested scenarios, and proposed to use
+multi-objective optimization for action selection based motion
+attributes of other ASVs. These works provide insight into
+the problem where the ego vehicle needs to exhibit different
+motion patterns based on the scenarios encountered, under the
+ideal assumption of no wind and wave disturbances and no
+perceptual error. Additionally, environments containing static
+obstacles are not considered in these works.
+In recent years, Deep Reinforcement Learning (DRL), given
+its ability to adapt to complex dynamic scenarios, has been
+used to develop collision avoidance policies for ASVs as-
+suming no external disturbances to vehicles. Zhao et al. [2]
+presented a DRL policy-gradient agent for ASV path following
+and COLREGs-compliant collision avoidance task. Meyer et
+al. [20] trained a proximal policy optimization (PPO) based
+controller that can navigate among other path-following ves-
+sels and static obstacles. Li et al. [21] used APF to improved
+the performance of a DQN agent in ASV control problems
+by enabling continuous actions and providing richer reward
+signals. Heiberg et al. [22] incorporated collision risk indices
+(CRIs) into the reward function to guide the learning of a
+COLREGs-compliant RL agent. Wei et al. [23] proposed a
+multi-agent reinforcement learning approach that promotes
+collaborative collision avoidance behaviors among vessels.
+III. P ROBLEM STATEMENT
+In this work, we focus on the autonomous navigation
+problem of ASVs in relatively dense and congested maritime
+environments. Each ASV is required to navigate to a specified
+goal location given only measurements from onboard LiDAR
+and odometry sensors, while avoiding collisions with other
+surrounding ASVs and buoys.
+We use Virtual RobotX (VRX) [7] as the evaluation plat-
+form, which is a realistic Gazebo based marine simulation
+environment developed by Open Robotics [24] and used in the
+Maritime RobotX Competition [25]. VRX adopts a dynamic
+model from [26], which is shown as follows:
+MRB ˙ν + CRB(ν)ν + MA ˙νr + CA(νr)νr+
+D(νr)νr + g(η) = τ + τwind + τwave. (1)
+In the formula, η and ν are the 6-dimensional position and
+velocity vectors. νr is the vessel velocity with respect to the
+fluid. τ, τwind, and τwave are the forces and moments from
+propulsion, wind and waves.
+VRX [7] models the perturbations of wind and waves on
+in-water objects, and perception error derives from the need to
+continually segment and track both static and moving obstacles
+--- Page 3 ---
+3
+from raw LiDAR data. We use the default settings in VRX [7],
+where zero-mean Gaussian noise with 0.01 standard deviation
+is applied to the LiDAR point cloud, and no noise is added to
+the odometry measurements.
+We use the W AM-V ASV model provided by VRX as
+the deployment vessel, the motion of which is controlled
+by thrusts from left and right propellers. We fix the angle
+of each propeller to zero such that the thrust always aligns
+with the hull, and the turning motion is achieved by the
+difference between thrusts. For each propeller, the maximum
+forward thrust is set to 1000.0 N, and the maximum backward
+thrust is set to 500.0 N. We denote the thrust range as
+[−500.0, 1000.0] N. With the given thrust range, the vehicle
+achieves a maximum forward speed of about 3.3 m/s and a
+maximum backward speed of about 2.3 m/s.
+IV. P ERCEPTION PROCESSING
+Given LiDAR and odometry measurements, we obtain the
+state information of the ego vehicle and objects in its imme-
+diate surroundings as shown in the following equations:
+sego = [pgoal
+x , pgoal
+y , vx, vy, w, Tleft , Tright] (2)
+sobject = [o1, . . . ,on], oi = [pi
+x, pi
+y, vi
+x, vi
+y, ri]. (3)
+In the ego state sego, pgoal
+x and pgoal
+y are the x and y
+coordinates of the given goal location, vx and vy are the x and
+y components of the linear velocity, w is the yaw component
+of the angular velocity, and Tleft , Tright are thrusts of the left
+and right propellers. To simplify the perception, we consider
+each perceived object to be a cylindrical shape. The state of the
+i-th perceived object consists of its position, [pi
+x, pi
+y], velocity,
+[vi
+x, vi
+y], and radius ri. Both ego state and object states are
+expressed in the frame of the ego vehicle.
+The algorithm we use to extract object information from
+the LiDAR point cloud is based on [27] and described in
+Algorithm 1, where R(·) computes the distance between a
+LiDAR point and the LiDAR center, M(·) and m(·) are the
+max and min operators respectively, and θ is a given threshold
+to decide whether a point belongs to a cluster. An example
+of point cloud segmentation is shown in Figure 1, where
+different clusters are shown in different colors. Given that
+velocity estimates of distant clusters are less reliable due to the
+influence of environmental disturbances, we discard LiDAR
+reflections beyond 20 meters.
+After segmentation, each cluster is regarded as an object,
+and the centroid and radius of the cluster are used as the
+position and radius of the object. To estimate the velocity
+of the object, we project the clusters from the vehicle frame
+at the last time step to the current frame using a relative
+transformation computed with odometry measurements. For
+simplicity, we assume that a perceived object with estimated
+speed smaller than 0.5 m/s is not a vehicle and we do not
+include it in the COLREGs checking process mentioned in
+Section V. The resulting ego state and object states will be
+used in the decision making and control module.
+V. D ECISION MAKING AND CONTROL WITH RL
+A. Problem Formulation
+A Markov Decision Process (S, A, P, R, γ) is used to
+describe the ASV navigation problem, where S and A are the
+Algorithm 1: LiDAR point cloud segmentation
+Input: LiDAR point clouds P, Output: Clusters set C
+i = 0, C[i].centroid = 0.0, C[i].raidus = 0.0
+for each point j in P
+if j belongs to an existing cluster then continue
+Initialize a new queue q ← ∅, q.push(j), i = i + 1
+while q is not empty
+k = q.top(), C[i].add(k), q.pop()
+Update C[i].centroid and C[i].raidus with k
+for each point p that is a neighbor of k
+d1 = M(R(p), R(k)), d2 = m(R(p), R(k))
+if arctan d2 sin α
+d1−d2 cos α > θthen q.push(k)
+state space and action space of agents interacting with the en-
+vironment. P(·|s, a) is the state transition function describing
+the evolution of environment state, which reflects the dynamics
+in Equation (1). The reward function R(s, a) generates scalar
+value signals that indicate the preference towards state-action
+pairs. At each time step t, based on the observation of the
+current state st, each agent selects an action at according to
+the policy π. Then the environment transitions to the next state
+st+1 according to P(·|st, at) and each agent receives a reward
+rt+1 = R(st+1, at+1). The action value function Qπ(s, a) is
+defined as the expected cumulative reward of taking action
+a at state s and following the policy π thereafter, where the
+discount factor γ ∈ [0, 1) reflects the importance of future
+rewards.
+Qπ(s, a) = Eπ[
+X∞
+k=0
+γkrt+k+1|st = s, at = a] (4)
+The objective is to obtain an optimal policy π∗ that maxi-
+mizes Qπ(s, a) for all state-action pairs, and the resulting op-
+timal action value function Qπ∗(s, a) satisfies the Bellman op-
+timality equation Qπ∗(s, a) = E[rt+1 + γ maxa′ Qπ∗(s′, a′)].
+B. Action Commands
+The action commands in each control time step are the
+variations in the propellers’ thrusts. For methods that output
+discrete actions, the action command of each propeller is
+chosen from a given action set. We observed that increasing
+the number of actions in the discretized action space causes
+difficulties in learning stable control policies, and chose the
+action set A = {−1000.0, −500.0, 0.0, 500.0, 1000.0} N/s.
+For methods that operate in continuous action space, each
+action a ∈ [−1000.0, 1000.0] N/s. When applying actions,
+thrusts are clipped within the thrust range noted in Sec. III.
+C. Deep Reinforcement Learning
+DQN [28] uses a deep neural network model to approximate
+the action value function Q(s, a), and train it by optimizing
+the loss based on Temporal Difference (TD) error.
+LDQN = E[(r + γ max
+a′
+Q(s′, a′; θ−) − Q(s, a; θ))2] (5)
+Rainbow [29] outperforms DQN in the Atari 2600 benchmark
+by incorporating techniques that suppress overestimation and
+improve stability and efficiency in learning value functions.
+For continuous control problems, the action space needs to be
+discretized for DQN and Rainbow to be applied.
+--- Page 4 ---
+4
+DDPG [30] is an actor-critic method that is applicable to
+continuous action space. It maintains a critic model Q(s, a|θQ)
+that can be learned with a loss function similar to Equation
+(5), and an actor model µ(s|θµ), the parameters of which are
+updated using the following policy gradient.
+∇θµJ ≈ E[∇aQ(s, a|θQ)|a=µ(s)∇θµµ(s|θµ)] (6)
+SAC [31] further improves exploration with an objective
+function (7) that involves the entropy of the learned policy,
+and uses a stochastic actor with enhanced robustness.
+J =
+XT
+t=0
+E[r(st, at) + αH(π(·|st))] (7)
+D. Distributional Reinforcement Learning
+Instead of the expected return Qπ(s, a), Distributional RL
+algorithms [32] learn the return distribution Zπ(s, a), where
+Qπ(s, a) = E[Zπ(s, a)], and the distributional Bellman equa-
+tion, Zπ(s, a)
+D
+= R(s, a) + γZπ(s′, a′), is considered. When
+the dynamics of the operating environment are highly uncer-
+tain, the randomness of the collected reward samples adversely
+affect the accuracy of the learned action value. Distributional
+RL methods can mitigate this problem by modeling and
+learning the distribution of cumulative rewards.
+Implicit Quantile Networks (IQN) [10] express the return
+distribution with a quantile function Zτ := F−1
+Z (τ), where
+τ ∼ U([0, 1]), and represents the policy as follows.
+π(s) = argmaxa
+1
+K
+XK
+k=1
+Zτk (s, a), τk ∼ U([0, 1]) (8)
+Parameters of the IQN policy model can be learned by
+optimizing the loss defined in Equation (11). The outputs of
+the quantile function, Zτk , are referred to as action quantile
+values. IQN also requires a discretized action space.
+δτi,τ′
+j = r + γZτ′(s′, π(s′)) − Zτ (s, a) (9)
+ρκ
+τ (u) = |τ − 1{u<0}|(Lκ(u)/κ),
+where Lκ(u) =
+ 1
+2 u2, if |u| ≤κ
+κ(|u| −1
+2 κ), otherwise
+(10)
+LIQN = 1
+N′
+XN
+i=1
+XN′
+j=1
+ρκ
+τi(δτi,τ′
+j ) (11)
+E. Actor Critic Implicit Quantile Networks
+In this work, we develop a novel decision making and
+control policy for ASV navigation based on IQN within an
+actor-critic framework, which we denote AC-IQN. Compared
+to policies based on traditional RL in Sec. V-C, the proposed
+policy uses Distributional RL, which can be more robust to
+the marine operating environment and its uncertainties from
+motion disturbances, perception errors and unknown intents
+of other vehicles. The proposed policy also exhibits superior
+maneuverability over the policy based on IQN in Sec. V-D,
+which is crucial for deployment in congested scenarios.
+The learning algorithm of the proposed decision making and
+control policy based on AC-IQN is shown in Algorithm 2. The
+Critic Zθ is similar to the original IQN policy model, which
+outputs action quantile values given quantile samples and a
+state-action pair. When computing the Critic loss gradient
+∇θL, the policy output of the Actor πϕ′, and quantile samples
+{τi|i = 1, . . . , N} and {τj|j = 1, . . . , N′}, drawn from the
+Algorithm 2: AC-IQN model update
+Input: Critic Zθ, Actor πϕ, replay buffer M
+Sample a minibatch {(s, a, r, s′)i}M
+i=1 from M
+Compute gradient of the critic loss ∇θL, where
+L = 1
+M
+MX
+i=1
+[ 1
+N′
+NX
+i=1
+N′
+X
+j=1
+ρκ
+τi(r + γZτj
+θ′ (s′, πϕ′(s′))
+− Zτi
+θ (s, a))]
+Compute the policy gradient ∇ϕJ, where
+∇ϕJ = E[ 1
+N
+NX
+i=1
+∇aZτi
+θ (s, a)|a=πϕ(s)∇ϕπϕ(s)]
+Update critic and actor network parameters
+θ ← θ + αθ · ∇θL, ϕ← ϕ + αϕ · ∇ϕJ
+Update target network parameters every k iterations
+θ′ ← βθ + (1 − β)θ′, ϕ′ ← βϕ + (1 − β)ϕ′
+Fig. 2: Example training scenarios. The velocity of each vehicle is
+indicated by the red arrow, goal positions are plotted as green stars,
+and buoys are shown as black circles.
+TABLE I: Curriculum training process.
+Timesteps (million) 1st 2nd 3rd 4st 5st 6st
+Number of robots 3 4 5 5 5 5
+Number of buoys 0 0 0 2 3 4
+Min distance between 30.0 35.0 40.0 40.0 40.0 40.0start and goal
+uniform distribution U([0, 1]), are used. The loss function ρκ
+τ
+is defined in Equation (10).
+Policy gradient ∇ϕJ is used to update the Actor πϕ, which
+can be computed according to the chain rule as shown in
+Algorithm 2. The expectation over state is approximated with
+those from the sampled minibatch.
+F . Training RL agents
+We trained our AC-IQN agent, as well as IQN, SAC,
+DDPG, Rainbow and DQN agents which serve as comparative
+baselines, and used them in experiments described in Section
+VI. The SAC and Rainbow agents are based on the implemen-
+tations of [33] and [34]. Due to the high computational expense
+of Gazebo’s realistic environment simulation, RL agents were
+trained in a simplified 2D environment. As shown in Equation
+(12), a simplified three Degree-of-Freedom (DoF) dynamic
+model described in [26] is used, which only includes surge,
+sway, and yaw DoFs.
+MRB ˙ν + CRB(ν)ν + MA ˙νr + N(νr)νr = τ + τwind + τwave
+(12)
+--- Page 5 ---
+5
+Fig. 3: Learning performance. Each curve and its band width in the above cumulative reward and success rate plots reflect the values of
+the mean and standard error. To compute the average travel time, we only include data from robots that successfully reach their goals.
+Fig. 4: AC-IQN network architecture. FC, ReLU, COS, ⊙ and
+CONCAT stand for Fully Connected Layer, Rectified Linear Unit,
+Cosine Embedding Layer, element-wise product and concatenation
+of tensors. The numbers after IN and OUT are the input and output
+dimension of a layer.
+To maintain efficient training processes, the perceptual
+information defined in Eqs. (2) and (3) was directly given,
+and τwind and τwave were assumed to be zero. We introduced
+noisy perception, defined in Eqs. (13) - (15), to increase the
+robustness of trained RL agents to motion disturbances and
+perception errors.
+Po = P + wp, wp ∼ N(0, Σp) (13)
+Vo = V + wv, wv ∼ N(0, Σv) (14)
+Ro = R · (rmean + (1− rmean) · wr/π), wr ∼ V(0, κ) (15)
+In the above equations, P, V , and R are the ground truth
+position, velocity and radius of the perceived objects. Position
+noise wp and velocity noise wv are drawn from zero-mean
+Gaussian distributions. Since the perceived radius is bounded
+by the actual enclosing radius of the object, we model the
+radius noise wr with a von Mises distribution, which is a close
+approximation to the wrapped normal distribution and lies
+within [−π, π]. As the training schedule in Table I shows, the
+complexity of the randomly generated training environment
+gradually increases as the training proceeds. Example training
+scenarios are visualized in Figure 2. Similar to our prior work
+[9], we only maintain one RL model during training, which
+Fig. 5: Head-on and crossing scenarios. Velocities of the ego vehicle
+that are consistent with COLREGs requirements are plotted in yellow.
+The COLREGs compliant velocity of each vehicle is computed by
+viewing it as the ego vehicle.
+is shared with all vehicles for individual decision making and
+control tasks.
+rt = rstep + rforward + rCOLREGs · I(st ∈ SCOLREGs)
++ rcollision · I(st ∈ Scollision) + rgoal · I(st ∈ Sgoal) (16)
+The reward function we use in training is shown in Equation
+(16), where I(·) is the indicator function, rstep = −0.1,
+rforward = ||pgoal
+t−1 || − ||pgoal
+t ||, rcollision = −5.0, rgoal = 10.0.
+We considered three cases of two-vehicle encounters where
+each vehicle shall follow the behavior specified by COLREGs
+[14] unless other actions are needed to avoid collisions: (1)
+Overtaking; (2) Head-on; (3) Crossing. For case (1), the vessel
+at the back shall move out of the way of the vessel being
+overtaken. rcollision penalizes actions leading to collisions, and
+thus promotes behaviors that conform to the rule of case (1).
+For case (2), each vessel shall alter course to starboard and
+pass on the port side of the other. For case (3), the vessel that
+has the other on its starboard side shall give way. To promote
+behaviors that follow the rules of cases (2) and (3), which
+are visualized in Figure 5, each vehicle, ego, will be checked
+against its closest vehicle, rob: 1) ego is determined to be in
+a head-on situation if it is in the head-on zone of rob, and the
+absolute value of the angle from Vrob to Vego is greater than
+3π/4; 2) ego is the give way vehicle in the crossing situation
+if it is in the crossing zone of rob, and the angle from Vrob to
+Vego is in [π/4, 3π/4]. If ego is in situation 1) or 2), which we
+denote as st ∈ SCOLREGs, then rCOLREGs = −0.1 · max(δ, 0.0)
+will be applied to ego, where δ ∈ [−π, π) is the angle from
+Vego to VCOLREGs (clockwise is positive). Scollision and Sgoal are
+situations where ego collides with other objects and reaches
+the goal respectively.
+--- Page 6 ---
+6
+The network structure for the AC-IQN agent is shown in
+Figure 4. The Cosine Embedding Layer computes a feature
+[cos(π · 0 · τ), . . . ,cos(π · 63 · τ)] for each quantile sample
+τ. The outputs of Actor are numbers in (−1.0, 1.0), which
+are then multiplied by 1000.0 to match the action range. The
+structure of the networks used by IQN, DDPG and DQN
+agents are mostly the same as AC-IQN, except for necessary
+modifications to match the corresponding input and output.
+The learning performances of the AC-IQN, IQN, SAC,
+DDPG, Rainbow and DQN agents are shown in Figure 3.
+Considering the effect of random seed selection on training, we
+train 30 models with different random seeds for each agent on
+an Nvidia RTX 3090 GPU and show the general performance.
+AC-IQN shows a clear advantage in the cumulative reward
+obtained during the training process relative to other methods,
+and achieves the highest success rate with a minimal amount
+of travel time. IQN and SAC achieve similar levels of safety
+performance as AC-IQN, but at the cost of longer average
+travel time in general. On the contrary, DDPG and DQN can
+complete navigation tasks efficiently, but have much lower
+success rates than AC-IQN. Rainbow does not succeed in
+learning safe and efficient policies, which may result from
+the effects of substantial observation noise and uncertainty
+in multi-vehicle interactions on the performance of Rainbow
+components like multi-step return and prioritized replay.
+VI. E XPERIMENTS
+Each navigation system evaluated in our experiments re-
+quires the integration of the perception module introduced
+in Sec. IV and a decision making & control agent into the
+Robot Operating System (ROS 2) framework, and we use all
+six RL methods described in Sec. V in the experiments. For
+each RL method, we choose the model with average training
+success rate performance of all trained models for use in our
+experiments. In addition to RL agents, we also include two
+classical methods, Artificial Potential Fields (APF) and Model
+Predictive Control (MPC), which also consider COLREGs in
+ASV navigation and are described in the following paragraphs,
+as baselines.
+The experiments were run on an AMD Ryzen threadripper
+3970X CPU and used the sydney_regatta environment
+of the VRX simulator. We approximate the scenario of Fig.
+5 in [7] and set the average wind speed to 10 m/s. The
+wave parameters of period and gain ratio, defined in [7],
+are respectively set to 5.0 sec. and 0.3 to approximate the
+conditions of the inland water at sydney_regatta. We
+performed six sets of experiments with an increasing level
+of complexity reflected in the number of vehicles and buoys,
+where each set includes 100 experiments for each navigation
+system. Examples of experiment scenarios are visualized in
+Figure 6. For an experiment episode, all vehicles are equipped
+with the same navigation system, and the episode is considered
+failed if a collision happens or the travel time of any vehicle
+exceeds 90 seconds.
+The APF agent we implemented is based on [35] and
+[16]. COLREGs-compliant behaviors are promoted by gen-
+erating virtual obstacles to prevent vehicles from entering
+COLREGs-violating locations. The repulsive forces Urep =
+Fig. 6: Example VRX experiment episodes (with and without
+buoys). The initial vehicle poses and the buoy positions are shown.
+0.5 · krep · (1/d(X, Xo) − 1/d0)2 · d2(X, Xg) are generated
+when d(X, Xo) ≤ d0. X and Xg are positions of the robot and
+goal, and Xo are the positions of perceived objects and virtual
+obstacles. The attractive force Uatt(X) = 0.5 ·katt ·d2(X, Xg).
+We use katt = 50.0, krep = 500.0, d0 = 15.0, and total force
+F = −∇Uatt(X) − ∇Urep(X). To map the force to an action
+command, we forward simulate all combinations of action
+commands from the action set A defined in Sec. V-B for
+one control time step, and choose the one that minimizes the
+difference between velocity at the next step and F.
+The MPC agent we have implemented is similar to [5].
+The idea is to predict scenarios k ∈ {1, 2, . . . , Ns} corre-
+sponding to different motion commands and states of ob-
+jects i ∈ {1, 2, . . . , No} in the future horizon from t0,
+and choose the control behavior k∗(t0) = arg min k Hk(t0),
+where Hk(t0) = maxi maxt∈D(t0)(Ck
+i (t)Rk
+i (t) + κiMk
+i (t) +
+λiT k
+i (t))+ f(uk
+m, Xk
+m). As defined in [5], Ck
+i (t) are Rk
+i (t) are
+collision cost and collision risk factor, Mk
+i (t) and κi are the
+COLREGs violation cost and a tuning parameter, λiT k
+i (t))
+is the COLREGs-transitional cost, and f(uk
+m, Xk
+m) is the cost
+of maneuvering effort. For each combination of actions from
+the action set A in Sec. V-B, we simulate the scenario for
+a horizon of T = 5 control time steps, and choose the
+one the minimizes the cost Hk(t0). We set Ck
+i (t) = 50 .0,
+κi = 1.0, Mk
+i (t) = 10 .0, and λi = 2.0 when the situations
+corresponding to the cost terms happen, otherwise these values
+are set to zero. Other terms remain the same as defined in [5].
+Our experimental results are shown in Figure 8 and Table
+II. In general, the AC-IQN based system achieves the highest
+success rate, with minimal average travel time. APF and
+MPC based systems exhibit worse safety performance than RL
+based systems, especially in complex cases. RL agents have
+been trained to be robust to the influences of environmental
+disturbances on ASV motion and perception, and learn safety-
+preserving behaviors during the training process. Among RL
+--- Page 7 ---
+7
+Fig. 7: Trajectories of AC-IQN based system in VRX experiments shown in Fig. 6. Yellow dots and stars indicate the start and goal
+positions of the vehicles, and the indices next to them match those in Fig. 6. Vehicle poses are depicted with the vehicle icons shown.
+Vehicle velocities and timestamps (in seconds) are shown as arrows and numbers with one decimal place in corresponding colors.
+Fig. 8: Success rates in VRX experiments. Labels on the x-
+axis indicate the number of vehicles (rob) and buoys (obs) used in
+corresponding sets of experiments.
+agents, the SAC based system demonstrates the most compet-
+itive safety performance with AC-IQN throughout all sets of
+experiments, but SAC requires over 40% more travel time on
+average than the latter. Accordingly, AC-IQN offers superior
+performance in complex multi-ASV navigation scenarios by
+combining continuous space maneuverability and the efficacy
+of Distributional RL in highly uncertain environments.
+The initial configurations of two example experiment
+episodes are shown in Fig. 6, and the behaviors of our AC-IQN
+based system are demonstrated in Fig. 7. In each plot of Fig.
+7, we show vehicle poses and velocities at two timestamps to
+clarify the relative movements. There are slight differences in
+timestamps because trajectories and corresponding timestamps
+are recorded by vehicles individually, and we visualize those
+Avg. travel 3 rob 4 rob 5 rob 5 rob 5 rob 5 rob
+time (s) 0 obs 0 obs 0 obs 2 obs 3 obs 4 obs
+AC-IQN 17.22 17.85 20.22 21.06 21.97 22.81
+IQN 29.19 30.06 36.77 36.65 41.21 39.64
+SAC 24.09 24.75 29.96 29.50 31.54 32.35
+DDPG 18.22 18.24 20.51 20.89 21.34 21.58
+Rainbow 36.46 36.56 43.33 47.32 – –
+DQN 19.39 23.38 21.91 22.24 23.40 23.25
+APF 22.37 23.07 25.76 23.82 24.62 24.53
+MPC 17.96 19.10 20.71 28.80 33.16 33.61
+TABLE II: Travel time data from VRX experiments. Rainbow
+based system fails completely in sets 5 rob 3 obs and 5 rob 4 obs.
+with the smallest time differences.
+As shown in the plots on the top row of Fig. 7, five vehicles
+are navigating with no buoys present in the environment.
+Vehicles 0 and 1 approach each other in a head-on manner,
+and both decide to turn right at around 5.0 seconds to avoid a
+potential collision. Vehicle 4 gets close to vehicle 3 from the
+port side of the latter, then it stays and gives way to vehicle
+3 from around 8.0 seconds to 12.5 seconds. After vehicle 3
+passes, vehicle 4 approaches another vehicle, vehicle 1, from
+the port side of the other again, and it slows down to wait
+for clearance. Therefore, the AC-IQN based system shows the
+capability of generating actions that follow COLREGs.
+At bottom of Fig. 7, four buoys exist and form a passage
+in the middle. Due to the existence of buoys, the motions of
+vehicles are constrained and it would be difficult and even
+unsafe to follow COLREGs. It can be seen from the plots on
+--- Page 8 ---
+8
+the bottom row of Fig. 7 that vehicles 3, 0, and 1 approach
+the passage from the lower side in sequence, and vehicle 4
+approaches from the upper side. The vehicles pass in a first-
+in-first-out manner, where the one being closest to the passage
+gets to cross while others slow down and give way. Being the
+last one waiting in the line, vehicle 1 decides to detour to
+save time. This episode shows that when facing difficulties
+in following COLREGs in a complex environment, the AC-
+IQN based system can maneuver in a way that is beneficial to
+navigation safety and efficiency.
+VII. C ONCLUSION AND FUTURE WORK
+We propose a novel ASV autonomous navigation system
+that integrates a perception module that works with onboard
+LiDAR and odometry sensors, and a decision making and
+control module using Distributional RL that can generate
+arbitrary control commands in continuous action space. The
+proposed system is extensively evaluated in realistic Gazebo
+simulations against seven baseline systems based on state-of-
+the-art Distributional RL, non-Distributional RL and classical
+methods, and demonstrates superior performance in navigation
+safety and efficiency over baseline systems. In future work, our
+system performance may be further improved by introducing
+risk sensitivity, and by conducting real-world ASV field tests
+with onboard LiDAR, GPS and IMU.
+REFERENCES
+[1] A. Vagale, R. Oucheikh, R. T. Bye, O. L. Osen, and T. I. Fossen, “Path
+planning and collision avoidance for autonomous surface vehicles I: A
+Review,” Journal of Marine Science and Technology , pp. 1–15, 2021.
+[2] L. Zhao and M.-I. Roh, “COLREGs-compliant multiship collision
+avoidance based on deep reinforcement learning,” Ocean Engineering ,
+vol. 191, p. 106436, 2019.
+[3] Y . Cho, J. Han, and J. Kim, “Efficient COLREG-compliant collision
+avoidance in multi-ship encounter situations,” IEEE Transactions on
+Intelligent Transportation Systems, vol. 23, no. 3, pp. 1899–1911, 2020.
+[4] Y . Kuwata, M. T. Wolf, D. Zarzhitsky, and T. L. Huntsberger, “Safe
+maritime autonomous navigation with COLREGs, using velocity obsta-
+cles,” IEEE Journal of Oceanic Engineering, vol. 39, no. 1, pp. 110–119,
+2013.
+[5] I. B. Hagen, D. K. M. Kufoalor, E. F. Brekke, and T. A. Johansen, “Mpc-
+based collision avoidance strategy for existing marine vessel guidance
+systems,” in 2018 IEEE International Conference on Robotics and
+Automation (ICRA). IEEE, 2018, pp. 7618–7623.
+[6] B.-O. H. Eriksen, M. Breivik, E. F. Wilthil, A. L. Fl ˚aten, and E. F.
+Brekke, “The branching-course model predictive control algorithm for
+maritime collision avoidance,” Journal of Field Robotics, vol. 36, no. 7,
+pp. 1222–1249, 2019.
+[7] B. Bingham, C. Aguero, M. McCarrin, J. Klamo, J. Malia, K. Allen,
+T. Lum, M. Rawson, and R. Waqar, “Toward maritime robotic simulation
+in gazebo,” in Proceedings of MTS/IEEE OCEANS Conference , Seattle,
+W A, October 2019.
+[8] M. G. Bellemare, W. Dabney, and M. Rowland, Distributional reinforce-
+ment learning. MIT Press, 2023.
+[9] X. Lin, Y . Huang, F. Chen, and B. Englot, “Decentralized multi-
+robot navigation for autonomous surface vehicles with distributional
+reinforcement learning,” in 2024 IEEE International Conference on
+Robotics and Automation (ICRA) , 2024, pp. 8327–8333.
+[10] W. Dabney, G. Ostrovski, D. Silver, and R. Munos, “Implicit quantile
+networks for distributional reinforcement learning,” in International
+Conference on Machine Learning (ICML) . PMLR, 2018, pp. 1096–
+1105.
+[11] G. Barth-Maron, M. W. Hoffman, D. Budden, W. Dabney, D. Horgan,
+T. Dhruva, A. Muldal, N. Heess, and T. Lillicrap, “Distributed distri-
+butional deterministic policy gradients,” in International Conference on
+Learning Representations, 2018.
+[12] J. Duan, Y . Guan, S. E. Li, Y . Ren, Q. Sun, and B. Cheng, “Distributional
+soft actor-critic: Off-policy reinforcement learning for addressing value
+estimation errors,” IEEE transactions on neural networks and learning
+systems, vol. 33, no. 11, pp. 6584–6598, 2021.
+[13] R. Singh, K. Lee, and Y . Chen, “Sample-based distributional policy
+gradient,” in Learning for Dynamics and Control Conference . PMLR,
+2022, pp. 676–688.
+[14] International Maritime Organization, “Convention on the international
+regulations for preventing collisions at sea, 1972 (COLREGs),” 1972.
+[15] M. Jeong and A. Q. Li, “Motion attribute-based clustering and collision
+avoidance of multiple in-water obstacles by autonomous surface vehi-
+cle,” in IEEE/RSJ International Conference on Intelligent Robots and
+Systems (IROS), 2022, pp. 6873–6880.
+[16] W. Naeem, S. C. Henrique, and L. Hu, “A reactive colregs-
+compliant navigation strategy for autonomous maritime navigation,”
+IFAC-PapersOnLine, vol. 49, no. 23, pp. 207–213, 2016.
+[17] H.-T. L. Chiang and L. Tapia, “Colreg-rrt: An rrt-based colregs-
+compliant motion planner for surface vehicle navigation,”IEEE Robotics
+and Automation Letters , vol. 3, no. 3, pp. 2024–2031, 2018.
+[18] Y . Cho, J. Kim, and J. Kim, “Intent inference-based ship collision
+avoidance in encounters with rule-violating vessels,” IEEE Robotics and
+Automation Letters, vol. 7, no. 1, pp. 518–525, 2021.
+[19] C. Jia, J. Ma, B. de Vries, and W. M. Kouw, “Bayesian inference of
+collision avoidance intent during ship encounters,” IEEE Transactions
+on Automation Science and Engineering , 2024.
+[20] E. Meyer, A. Heiberg, A. Rasheed, and O. San, “Colreg-compliant col-
+lision avoidance for unmanned surface vehicle using deep reinforcement
+learning,” Ieee Access, vol. 8, pp. 165 344–165 364, 2020.
+[21] L. Li, D. Wu, Y . Huang, and Z.-M. Yuan, “A path planning strategy
+unified with a colregs collision avoidance function based on deep
+reinforcement learning and artificial potential field,” Applied Ocean
+Research, vol. 113, p. 102759, 2021.
+[22] A. Heiberg, T. N. Larsen, E. Meyer, A. Rasheed, O. San, and D. Varag-
+nolo, “Risk-based implementation of colregs for autonomous surface
+vehicles using deep reinforcement learning,” Neural Networks, vol. 152,
+pp. 17–33, 2022.
+[23] G. Wei and W. Kuo, “Colregs-compliant multi-ship collision avoidance
+based on multi-agent reinforcement learning technique,” Journal of
+Marine Science and Engineering , vol. 10, no. 10, p. 1431, 2022.
+[24] Open Robotics. https://www.openrobotics.org/.
+[25] The Maritime RobotX Challenge. https://robotx.org/about/.
+[26] T. I. Fossen, Handbook of marine craft hydrodynamics and motion
+control. John Wiley & Sons, 2011.
+[27] I. Bogoslavskyi and C. Stachniss, “Fast range image-based segmentation
+of sparse 3d laser scans for online operation,” in 2016 IEEE/RSJ
+International Conference on Intelligent Robots and Systems (IROS) .
+IEEE, 2016, pp. 163–169.
+[28] V . Mnih, K. Kavukcuoglu, D. Silver, A. A. Rusu, J. Veness, M. G.
+Bellemare, A. Graves, M. Riedmiller, A. K. Fidjeland, G. Ostrovski
+et al. , “Human-level control through deep reinforcement learning,”
+Nature, vol. 518, no. 7540, pp. 529–533, 2015.
+[29] M. Hessel, J. Modayil, H. Van Hasselt, T. Schaul, G. Ostrovski, W. Dab-
+ney, D. Horgan, B. Piot, M. Azar, and D. Silver, “Rainbow: Combining
+improvements in deep reinforcement learning,” in Proceedings of the
+AAAI conference on artificial intelligence , vol. 32, no. 1, 2018.
+[30] T. P. Lillicrap, J. J. Hunt, A. Pritzel, N. Heess, T. Erez, Y . Tassa,
+D. Silver, and D. Wierstra, “Continuous control with deep reinforcement
+learning,” arXiv preprint arXiv:1509.02971 , 2015.
+[31] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-
+policy maximum entropy deep reinforcement learning with a stochastic
+actor,” in International conference on machine learning . PMLR, 2018,
+pp. 1861–1870.
+[32] M. G. Bellemare, W. Dabney, and R. Munos, “A distributional perspec-
+tive on reinforcement learning,” in International Conference on Machine
+Learning (ICML). PMLR, 2017, pp. 449–458.
+[33] J. Weng, H. Chen, D. Yan, K. You, A. Duburcq, M. Zhang, Y . Su,
+H. Su, and J. Zhu, “Tianshou: A highly modularized deep reinforcement
+learning library,” Journal of Machine Learning Research , vol. 23, no.
+267, pp. 1–6, 2022.
+[34] K. Arulkumaran, “Rainbow,” 2019. [Online]. Available: https://github.
+com/Kaixhin/Rainbow
+[35] X. Fan, Y . Guo, H. Liu, B. Wei, and W. Lyu, “Improved artificial
+potential field method applied for AUV path planning,” Mathematical
+Problems in Engineering , vol. 2020, pp. 1–21, 2020.

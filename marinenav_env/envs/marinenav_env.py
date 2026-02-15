@@ -20,7 +20,13 @@ class Obstacle:
 
         self.x = x # x coordinate of the obstacle center
         self.y = y # y coordinate of the obstacle center
-        self.r = r # radius of the obstacle    
+        self.r = r # radius of the obstacle
+        self.velocity_scale = 0.3 # obstacles move at 30% of current velocity
+    
+    def update_position(self, current_velocity, dt=1.0):
+        """Update obstacle position based on ocean current"""
+        self.x += current_velocity[0] * self.velocity_scale * dt
+        self.y += current_velocity[1] * self.velocity_scale * dt    
 
 class MarineNavEnv(gym.Env):
 
@@ -71,6 +77,7 @@ class MarineNavEnv(gym.Env):
         self.total_timesteps = 0 # learning timesteps
 
         self.set_boundary = False # set boundary of environment
+        self.dynamic_obstacles = False # if obstacles move with ocean current
 
     def seed(self, seed):
         self.sd = seed
@@ -210,6 +217,23 @@ class MarineNavEnv(gym.Env):
             self.robot.update_state(action,current_velocity)
             # save trajectory
             self.robot.trajectory.append([self.robot.x,self.robot.y])
+            
+            # update obstacle positions if dynamic obstacles enabled
+            if self.dynamic_obstacles:
+                for obs in self.obstacles:
+                    obs_velocity = self.get_velocity(obs.x, obs.y)
+                    obs.update_position(obs_velocity, dt=self.robot.dt)
+                
+                # Rebuild KDTree for obstacles after movement
+                if len(self.obstacles) > 0:
+                    centers = None
+                    for obs in self.obstacles:
+                        if centers is None:
+                            centers = np.array([[obs.x,obs.y]])
+                        else:
+                            c = np.array([[obs.x,obs.y]])
+                            centers = np.vstack((centers,c))
+                    self.obs_centers = scipy.spatial.KDTree(centers)
 
         dis_after = self.dist_to_goal()
         

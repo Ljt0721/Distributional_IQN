@@ -1,0 +1,42 @@
+\section{Introduction}
+
+Operating autonomous surface vehicles in ocean and riverine settings is strongly affected by ambient currents, and achieving navigation that is both safe and efficient under flow disturbances remains challenging~\cite{ref1}.
+While recent studies have made progress on \emph{global} route planning for USVs by explicitly leveraging a known or forecasted current field~\cite{ref2,ref3,ref4}, far fewer works address the \emph{local}, sensor-driven navigation problem when the current is not provided \emph{a priori}.
+Motivated by real-world scenarios such as field competitions and fast-flowing river environments~\cite{ref5}, we study a local planning setting in which the vehicle must act using onboard perception, without advance knowledge of the flow field.
+Beyond unknown and time-varying currents, our environment further includes \emph{dynamic obstacles} (e.g., moving vessels or drifting objects), which increases outcome uncertainty and makes robustness to tail risks---rare but catastrophic safety violations---more critical.
+Fig.~\ref{fig:intro_overview} shows a representative dynamic-flow scenario with moving obstacles: a value-based expected-return baseline (DQN) and classical reactive planners fail under current--obstacle interactions, while the proposed IQN-based planner reaches the goal reliably.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/intro.jpg}
+  \caption{Qualitative comparison under unknown, time-varying currents with dynamic obstacles.
+  Arrows show flow; magenta circles are obstacles; yellow markers denote start/goal.
+  DQN/APF/BA fail under current--obstacle interactions, while \textit{adaptive IQN} reaches the goal via risk-aware distributional value learning.}
+  \label{fig:intro_overview}
+\end{figure}
+
+Reinforcement learning offers a way to acquire control policies from interaction data, enabling generalization to previously unseen situations without requiring a complete environment model~\cite{ref6}.
+With deep neural networks, DRL becomes practical for high-dimensional sensory inputs, where policies can be executed efficiently via network inference.
+However, many widely used value-based DRL planners (e.g., DQN and its variants) primarily optimize the \emph{expected} return, which can be misaligned with safety in navigation tasks where failures are low-probability but high-impact, and where uncertainty is amplified by both currents and moving obstacles.
+
+Distributional reinforcement learning provides a complementary perspective by learning the \emph{full distribution} of returns rather than only their mean~\cite{ref7}.
+Modeling return distributions can better represent variability in action outcomes and can improve learning stability in stochastic environments.
+Moreover, risk distortions applied to the learned distributions allow the planner to explicitly emphasize unfavorable outcomes, offering a principled mechanism to tune collision sensitivity in practice~\cite{ref8}.
+This capability is particularly relevant when flow disturbances and dynamic obstacles jointly induce heavy-tailed outcome distributions.
+
+In this paper, we propose \textbf{Distributional-Risk Planner}, a distributional-RL local planner for sensor-based USV navigation under unknown current fields with dynamic obstacles.
+The planner uses Implicit Quantile Networks (IQN) to estimate action-conditioned return quantiles and selects actions via a risk-aware distortion that emphasizes adverse outcomes.
+We further introduce an adaptive procedure that adjusts risk sensitivity online, encouraging conservative behavior near hazards (e.g., in proximity to moving obstacles or in strong currents) while preserving efficiency in open regions.
+In addition, we incorporate an energy-related penalty into learning and provide an energy consumption analysis, demonstrating that the proposed planner can achieve safer navigation with lower energy usage.
+We benchmark against classical reactive local planners---Artificial Potential Fields (APF)~\cite{ref9,ref10} and Bug-type algorithms~\cite{ref11,ref12}---as well as expected-return DRL baselines, and we include stronger value-based variants such as DDQN and D3QN in our comparisons.
+
+\smallskip
+\noindent The main contributions of this work are:
+\begin{itemize}
+  \item We extend distributional-RL based local planning to a more challenging setting with \emph{dynamic obstacles} under \emph{unknown, time-varying currents}, and systematically evaluate the framework's robustness and performance in dynamic environments.
+  \item We incorporate an \emph{energy-related penalty/regularization term} and present an energy consumption analysis, showing improved safety with lower energy usage.
+  \item We provide comprehensive comparisons against classical reactive planners (APF and Bug-type methods) and value-based DRL baselines, including stronger deep RL baselines such as DDQN and D3QN.
+  \item We release an implementation and simulation environment for studying robust USV decision making under flow disturbances and moving hazards.\footnote{If you release code, place the link here.}
+\end{itemize}
+
+% =========================================================
