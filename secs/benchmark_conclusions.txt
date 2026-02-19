@@ -1,0 +1,48 @@
+=== Benchmark Conclusions ===
+Date: 2026-02-19 22:04:50
+Total Episodes: 200
+
+--- APF ---
+Success Rate: 13.50%
+Avg Energy (Success): 29.52 J
+Avg Time (Success): 21.63 s
+Avg Path Length (Success): 40.71 m
+Avg Calculation Time per Step: 0.04 ms
+
+--- BA ---
+Success Rate: 67.50%
+Avg Energy (Success): 43.53 J
+Avg Time (Success): 30.28 s
+Avg Path Length (Success): 48.25 m
+Avg Calculation Time per Step: 0.03 ms
+
+--- New Adaptive IQN ---
+Success Rate: 96.50%
+Avg Energy (Success): 34.62 J
+Avg Time (Success): 26.20 s
+Avg Path Length (Success): 48.74 m
+Avg Calculation Time per Step: 0.43 ms
+
+--- Old DQN ---
+Success Rate: 91.50%
+Avg Energy (Success): 40.78 J
+Avg Time (Success): 26.11 s
+Avg Path Length (Success): 49.37 m
+Avg Calculation Time per Step: 0.34 ms
+
+--- Old Greedy IQN ---
+Success Rate: 94.00%
+Avg Energy (Success): 36.04 J
+Avg Time (Success): 25.96 s
+Avg Path Length (Success): 48.51 m
+Avg Calculation Time per Step: 0.38 ms
+
+=== Comparative Analysis ===
+Most Reliable (Highest Success): New Adaptive IQN (96.50%)
+Most Efficient (Lowest Energy): APF (29.52 J)
+Fastest (Lowest Time): APF (21.63 s)
+
+=== Final Verdict ===
+The New Adaptive IQN model demonstrates a robust balance between reliability and efficiency.
+Compared to the Old Greedy IQN, it achieves 3.96% energy savings while maintaining comparable success rates.
+Detailed row-level data allows for t-test validation of these improvements in the main paper.

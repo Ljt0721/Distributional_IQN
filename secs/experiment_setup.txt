@@ -1,0 +1,19 @@
+=== Hardware & Environment ===
+OS: Windows 10 (10.0.26200)
+Python Version: 3.9.25
+CPU: AMD64 Family 26 Model 36 Stepping 0, AuthenticAMD
+CPU Physical Cores: 12
+CPU Logical Cores: 24
+Total RAM: 31.12 GB
+GPU: NVIDIA GeForce RTX 4060 Laptop GPU
+CUDA Version: 12.1
+
+=== Simulation Parameters ===
+Map Size: 50x50
+Robot Dimensions: Radius=0.8
+Observation Space Dim: 26
+Action Space Dim: 9
+Max Episode Steps: 1000
+Start-Goal Min Distance: 35.0 m (Constraint for Hard Maps)
+Random Seed Start: 7000
+Total Test Episodes: 200
