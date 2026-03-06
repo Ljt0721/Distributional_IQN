@@ -246,6 +246,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         total_timesteps, callback = self._setup_learn(
             total_timesteps,
             eval_env,
+            {None:None}, # eval_config patch
             callback,
             eval_freq,
             n_eval_episodes,

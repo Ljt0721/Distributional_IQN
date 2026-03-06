@@ -64,8 +64,15 @@ All DRL baselines share the same observation encoding and action space as our me
 \subsection{Results}
 \label{sec:results}
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/benchmark_results_plot.png}
+  \caption{Comprehensive evaluation metrics across 200 random episodes. (a) The proposed \textbf{Adaptive IQN} achieves the highest success rate (96.5\%). (b-d) Distribution of performance metrics for successful episodes. The adaptive planner maintains competitive time efficiency while shifting the energy distribution toward lower values compared to baselines (DQN) and risk-neutral variants, validating the benefits of risk-aware decision making.}
+  \label{fig:benchmark_results}
+\end{figure*}
+
 \paragraph{Overall performance.}
-Table~\ref{tab:main_results} summarizes the evaluation results over 200 random episodes. The proposed \textbf{Adaptive IQN} planner achieves the highest success rate of \textbf{96.50\%}, outperforming the risk-neutral greedy variant (94.00\%) and the standard expected-return DQN baseline (91.50\%).
+Table~\ref{tab:main_results} and Fig.~\ref{fig:benchmark_results} summarize the evaluation results over 200 random episodes. As shown in Fig.~\ref{fig:benchmark_results}(a), the proposed \textbf{Adaptive IQN} planner achieves the highest success rate of \textbf{96.50\%}, outperforming the risk-neutral greedy variant (94.00\%) and the standard expected-return DQN baseline (91.50\%).
 This performance advantage highlights the robustness of distributional RL in handling the aleatoric uncertainty introduced by unknown currents and dynamic obstacles.
 While classical planners like APF and BA show lower calculation times, their success rates are significantly compromised in this dynamic setting (13.50\% and 67.50\%, respectively), primarily due to local minima and inability to anticipate flow-induced drift.
 
