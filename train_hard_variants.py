@@ -114,32 +114,42 @@ class EvalCallback(BaseCallback):
 
         return True
 
-def create_env(seed):
-    # Same schedule as IQN paper implies (dynamic environment)
-    training_schedule = dict(timesteps=[0, 1000000],
+def create_env(seed, difficulty="hard"):
+    # Standard schedule for reference
+    standard_schedule = dict(timesteps=[0, 1000000],
                              num_cores=[4, 8],
                              num_obstacles=[6, 10],
                              min_start_goal_dis=[30.0, 35.0])
     
-    env = gym.make('marinenav_env:marinenav_env-v0', seed=seed, schedule=training_schedule)
+    # HARD schedule: More obstacles, more vortices
+    hard_schedule = dict(timesteps=[0, 1000000],
+                             num_cores=[8, 12],     # Increased
+                             num_obstacles=[10, 20],# Increased
+                             min_start_goal_dis=[35.0, 40.0]) # Increased slightly
+
+    schedule = hard_schedule if difficulty == "hard" else standard_schedule
+    
+    env = gym.make('marinenav_env:marinenav_env-v0', seed=seed, schedule=schedule)
     env = SuccessWrapper(env)
     return env
 
-def train_model(algo_name, model_class, policy_class, policy_kwargs=None):
-    print(f"--- Starting Training: {algo_name} ---")
+def train_model(algo_name, model_class, policy_class, policy_kwargs=None, difficulty="hard"):
+    print(f"--- Starting Training: {algo_name} [{difficulty.upper()}] ---")
     
-    # Paths
-    algo_dir = os.path.join(SAVE_DIR, algo_name, f"seed_{SEED}")
+    # Paths: e.g. pretrained_models/Hard_D3QN/seed_42
+    prefix = "Hard_" if difficulty == "hard" else ""
+    algo_dir = os.path.join(SAVE_DIR, f"{prefix}{algo_name}", f"seed_{SEED}")
     os.makedirs(algo_dir, exist_ok=True)
     
     # Envs
-    env = create_env(SEED)
-    eval_env = create_env(SEED + 1000) # Separate seed for eval
+    env = create_env(SEED, difficulty)
+    eval_env = create_env(SEED + 1000, difficulty) # Separate seed for eval
     
     # Callback
     eval_callback = EvalCallback(eval_env, EVAL_FREQ, N_EVAL_EPISODES, algo_dir)
     
     # Model
+    print(f"Initializing {algo_name}...")
     model = model_class(policy_class, env, verbose=1, seed=SEED, 
                         policy_kwargs=policy_kwargs)
     
@@ -217,21 +227,23 @@ class DuelingDQNPolicy(DQNPolicy):
         return DuelingQNetwork(**net_args).to(self.device)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        target = sys.argv[1].lower()
-    else:
-        target = "all"
-        
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("algo", type=str, help="Algorithm to train (d3qn, ppo, rainbow, all)")
+    args = parser.parse_args()
+    
+    target = args.algo.lower()
+    difficulty = "hard"
+
     # --- 1. D3QN (Dueling Double DQN) ---
     if target == "all" or target == "d3qn":
         d3qn_kwargs = dict(net_arch=[256, 256])
-        train_model("D3QN", DQN, DuelingDQNPolicy, policy_kwargs=d3qn_kwargs)
+        train_model("D3QN", DQN, DuelingDQNPolicy, policy_kwargs=d3qn_kwargs, difficulty=difficulty)
     
     # --- 2. PPO ---
     if target == "all" or target == "ppo":
-        train_model("PPO", PPO, "MlpPolicy")
+        train_model("PPO", PPO, "MlpPolicy", difficulty=difficulty)
 
     # --- 3. Rainbow (approx via QR-DQN) ---
     if target == "all" or target == "rainbow":
-        train_model("Rainbow", QRDQN, "MlpPolicy")
-
+        train_model("Rainbow", QRDQN, "MlpPolicy", difficulty=difficulty)

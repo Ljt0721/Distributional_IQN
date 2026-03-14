@@ -1,0 +1,128 @@
+{
+    "Obstacles_6": {
+        "PPO": {
+            "success_rate": 0.99,
+            "avg_time": 22.31,
+            "avg_energy": 15.85555467299079
+        },
+        "D3QN": {
+            "success_rate": 0.95,
+            "avg_time": 22.4,
+            "avg_energy": 14.996132660071218
+        },
+        "Rainbow": {
+            "success_rate": 0.99,
+            "avg_time": 22.96,
+            "avg_energy": 16.55392790063864
+        },
+        "AdaptiveIQN": {
+            "success_rate": 0.97,
+            "avg_time": 26.16,
+            "avg_energy": 16.750565924331326
+        },
+        "ImprovedAdaptiveIQN": {
+            "success_rate": 0.99,
+            "avg_time": 24.45,
+            "avg_energy": 15.47750019053156
+        },
+        "APF": {
+            "success_rate": 0.92,
+            "avg_time": 39.47,
+            "avg_energy": 18.184342930645688
+        },
+        "BA": {
+            "success_rate": 0.84,
+            "avg_time": 27.71,
+            "avg_energy": 15.0674410229008
+        },
+        "IQN": {
+            "success_rate": 0.95,
+            "avg_time": 22.66,
+            "avg_energy": 15.651427928672272
+        }
+    },
+    "Obstacles_8": {
+        "PPO": {
+            "success_rate": 0.98,
+            "avg_time": 21.05,
+            "avg_energy": 14.674517479400954
+        },
+        "D3QN": {
+            "success_rate": 0.96,
+            "avg_time": 20.68,
+            "avg_energy": 14.431766166691467
+        },
+        "Rainbow": {
+            "success_rate": 0.97,
+            "avg_time": 21.34,
+            "avg_energy": 15.602451024960615
+        },
+        "AdaptiveIQN": {
+            "success_rate": 0.98,
+            "avg_time": 29.26,
+            "avg_energy": 18.288982778297743
+        },
+        "ImprovedAdaptiveIQN": {
+            "success_rate": 0.96,
+            "avg_time": 22.66,
+            "avg_energy": 14.629669358262527
+        },
+        "APF": {
+            "success_rate": 0.9,
+            "avg_time": 51.01,
+            "avg_energy": 24.034215199602343
+        },
+        "BA": {
+            "success_rate": 0.89,
+            "avg_time": 33.41,
+            "avg_energy": 16.866014973128507
+        },
+        "IQN": {
+            "success_rate": 0.96,
+            "avg_time": 21.98,
+            "avg_energy": 15.122152080731741
+        }
+    },
+    "Obstacles_10": {
+        "PPO": {
+            "success_rate": 0.98,
+            "avg_time": 21.9,
+            "avg_energy": 15.353918648739755
+        },
+        "D3QN": {
+            "success_rate": 1.0,
+            "avg_time": 20.71,
+            "avg_energy": 14.749583630550198
+        },
+        "Rainbow": {
+            "success_rate": 0.96,
+            "avg_time": 22.12,
+            "avg_energy": 16.039199001644523
+        },
+        "AdaptiveIQN": {
+            "success_rate": 1.0,
+            "avg_time": 28.46,
+            "avg_energy": 18.234717571865865
+        },
+        "ImprovedAdaptiveIQN": {
+            "success_rate": 0.99,
+            "avg_time": 24.14,
+            "avg_energy": 15.15016797737263
+        },
+        "APF": {
+            "success_rate": 0.95,
+            "avg_time": 25.85,
+            "avg_energy": 14.874759641339484
+        },
+        "BA": {
+            "success_rate": 0.83,
+            "avg_time": 23.87,
+            "avg_energy": 14.137963243948938
+        },
+        "IQN": {
+            "success_rate": 0.95,
+            "avg_time": 21.26,
+            "avg_energy": 15.151768402607356
+        }
+    }
+}
