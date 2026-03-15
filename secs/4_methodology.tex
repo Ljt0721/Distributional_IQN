@@ -1,7 +1,17 @@
-
-
 \section{Methodology}
 \label{sec:method}
+
+% -----------------------------
+% System overview + network architecture figure
+% -----------------------------
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{RA-L/figures/framework_iqn.png}
+  \caption{System overview and network architecture of the proposed Adaptive IQN-based distributional-risk planner for USV navigation. The agent receives multi-modal onboard observations (velocity, goal-relative position, and LiDAR ranges), encodes and fuses them into a state feature, and predicts an action-conditioned return distribution via IQN. During action selection, a risk distortion is applied and adaptively adjusted based on obstacle proximity $d_{\min}$, yielding a risk-aware policy that becomes more conservative near obstacles.}
+  \label{fig:overview_arch}
+\end{figure*}
+
+As illustrated in Fig.~\ref{fig:overview_arch}, we consider a sensor-driven USV navigation setting under unknown, time-varying currents and (static/dynamic) obstacles. The overall pipeline consists of (i) multi-modal observation extraction, (ii) value/distribution prediction via a shared encoder and either DQN-family heads or an IQN head, and (iii) risk-distorted action selection with an adaptive risk sensitivity mechanism based on local obstacle proximity. We next detail the learning baselines and our distributional-risk planner.
 
 \subsection{Traditional DRL--DQN}
 \label{sec:method_dqn}
@@ -17,7 +27,7 @@ r + \gamma \max_{a'} Q(s',a';\theta^-)
 \Big].
 \label{eq:dqn_loss}
 \end{equation}
-In our experiments, DQN serves as the primary expected-return baseline. We further include stronger value-based variants (DDQN and D3QN) for more comprehensive comparisons; these share the same state/action interface but differ in target estimation and network decomposition.
+In our experiments, DQN serves as the primary expected-return baseline. We further include stronger value-based variants (DDQN and D3QN) for more comprehensive comparisons; these share the same state/action interface (cf. Fig.~\ref{fig:overview_arch}) but differ in target estimation and network decomposition.
 
 \subsection{Distributional RL}
 \label{sec:method_distRL}
@@ -34,7 +44,8 @@ To obtain an optimal distributional value function, we apply the distributional 
 \end{equation}
 
 \paragraph{IQN with risk distortion.}
-Our planner employs Implicit Quantile Networks (IQN) to represent $Z(s,a)$ via its quantile function. For $\tau \sim \mathcal{U}([0,1])$, define the $\tau$-quantile as
+Our planner employs Implicit Quantile Networks (IQN) to represent $Z(s,a)$ via its quantile function. As shown in Fig.~\ref{fig:overview_arch}, IQN predicts action-conditioned return \emph{quantiles} by combining a fused state feature with an embedding of sampled quantile fractions.
+For $\tau \sim \mathcal{U}([0,1])$, define the $\tau$-quantile as
 \begin{equation}
 Z_{\tau}(s,a) := F_Z^{-1}(\tau),
 \label{eq:iqn_quantile}
@@ -46,6 +57,17 @@ Q_{\beta}(s,a)
 \mathbb{E}_{\tau \sim \mathcal{U}([0,1])}\Big[ Z_{\beta(\tau)}(s,a)\Big].
 \label{eq:distorted_q}
 \end{equation}
+
+% -----------------------------
+% (1) Added: explicit CVaR-style distortion definition
+% -----------------------------
+In particular, we adopt a CVaR-style distortion parameterized by $\phi\in(0,1]$:
+\begin{equation}
+\beta_{\phi}(\tau) = \phi\,\tau,\quad \tau\in[0,1],
+\label{eq:cvar_distortion}
+\end{equation}
+which corresponds to emphasizing the lower-tail outcomes by averaging the lowest $\phi$ fraction of quantiles (i.e., a CVaR-type criterion). Intuitively, $\beta(\cdot)$ reshapes the contribution of quantiles (e.g., emphasizing lower-tail outcomes) so that action selection can account for unfavorable returns, consistent with the risk-distortion module depicted in Fig.~\ref{fig:overview_arch}.
+
 The resulting risk-aware policy is
 \begin{equation}
 \pi_{\beta}(s)=\arg\max_{a} Q_{\beta}(s,a),
@@ -61,7 +83,7 @@ which we approximate by Monte Carlo sampling with $K$ quantiles:
 \end{equation}
 
 \paragraph{Training objective.}
-IQN is trained using a quantile regression formulation. Given sampled quantiles $\{\tau_i\}_{i=1}^{N}$ and $\{\tau'_j\}_{j=1}^{N'}$, we form the sampled TD error
+IQN is trained using a quantile regression formulation. Following the training flow summarized in Fig.~\ref{fig:overview_arch} (replay transitions and TD targets), given sampled quantiles $\{\tau_i\}_{i=1}^{N}$ and $\{\tau'_j\}_{j=1}^{N'}$, we form the sampled TD error
 \begin{equation}
 \delta_{\tau_i,\tau'_j}
 =
@@ -99,6 +121,7 @@ The full environment state contains the USV pose and motion variables, the (unkn
 o_t = \big(o^{\mathrm{vel}}_t,\; o^{\mathrm{goal}}_t,\; o^{\mathrm{lidar}}_t\big).
 \label{eq:obs}
 \end{equation}
+As illustrated in Fig.~\ref{fig:overview_arch}, these modalities are encoded by separate MLPs and fused via concatenation to form the agent input feature.
 Following the sensor assumptions in the reference setting, $o^{\mathrm{vel}}_t$ represents the seafloor-relative velocity measured by a Doppler Velocity Log (DVL), $o^{\mathrm{goal}}_t$ denotes the goal position expressed in the robot frame using navigation sensors (e.g., IMU/compass/GPS), and $o^{\mathrm{lidar}}_t$ encodes range reflections indicating nearby obstacles. We use a fixed LiDAR sensing range $d_0$ and treat both static and dynamic obstacles uniformly through their instantaneous detections. Dynamic obstacles additionally change position over time, increasing uncertainty and making risk-aware decision making more critical.
 
 \subsection{Navigation Environment}
@@ -118,7 +141,8 @@ The net flow velocity at a location is obtained by summing contributions from ne
 \frac{dX(t)}{dt}=V(t)=V_C(X(t)) + V_S(t),
 \label{eq:kinematics}
 \end{equation}
-where $X(t)$ is the USV position, $V_C(\cdot)$ is the local current velocity, and $V_S(t)$ is the controllable steering velocity. Episodes terminate upon reaching the goal, colliding with an obstacle, leaving the workspace boundary, or exceeding a maximum horizon.
+where $X(t)$ is the USV position, $V_C(\cdot)$ is the local current velocity, and $V_S(t)$ is the controllable steering velocity (cf. the control loop in Fig.~\ref{fig:overview_arch}).
+Episodes terminate upon reaching the goal, colliding with an obstacle, leaving the workspace boundary, or exceeding a maximum horizon.
 
 \subsection{Action Space}
 \label{sec:method_action}
@@ -127,11 +151,22 @@ We discretize the control command as a change in the steering velocity $V_S$. Co
 a_t = (a,w),
 \label{eq:action}
 \end{equation}
-where $a$ adjusts the magnitude of $V_S$ (interpretable as a linear acceleration command) and $w$ adjusts its direction (an angular velocity command). We use a small discrete set for each component (e.g., $a \in \{-a_0,0,a_0\}$ and $w \in \{-w_0,0,w_0\}$), and clip the resulting forward speed to $[0,v_{\max}]$. This discrete parameterization enables direct comparison among DQN, DDQN, D3QN, and IQN under a shared action interface.
+
+% -----------------------------
+% (2) Added: discrete-time update for V_S from (a,w)
+% -----------------------------
+We implement the kinematics in discrete time with control interval $\Delta t$. Let $v_t=\|V_S(t)\|$ and $\theta_t$ denote the magnitude and direction of the steering velocity, respectively. The action $(a,w)$ updates the steering command as
+\begin{align}
+v_{t+1} &= \mathrm{clip}\!\left(v_t + a\,\Delta t,\; 0,\; v_{\max}\right), \label{eq:vs_update_v}\\
+\theta_{t+1} &= \theta_t + w\,\Delta t, \label{eq:vs_update_theta}\\
+V_S(t+1) &= v_{t+1}\big[\cos(\theta_{t+1}),\,\sin(\theta_{t+1})\big]. \label{eq:vs_update_vec}
+\end{align}
+
+where $a$ adjusts the magnitude of $V_S$ (interpretable as a linear acceleration command) and $w$ adjusts its direction (an angular velocity command). We use a small discrete set for each component (e.g., $a \in \{-a_0,0,a_0\}$ and $w \in \{-w_0,0,w_0\}$), and clip the resulting forward speed to $[0,v_{\max}]$. This discrete parameterization enables direct comparison among DQN, DDQN, D3QN, and IQN under a shared action interface, consistent with the action head(s) in Fig.~\ref{fig:overview_arch}.
 
 \subsection{Reward Function}
 \label{sec:method_reward}
-The reward is designed to encourage steady progress toward the goal while penalizing collisions and excessive energy usage. We use a shaped step reward based on goal-distance reduction and terminal bonuses/penalties:
+The reward is designed to encourage steady progress toward the goal while penalizing collisions and excessive energy usage. As summarized in Fig.~\ref{fig:overview_arch}, the agent receives a scalar reward after executing each action, where the reward incorporates both task progress and an energy-related penalty. We use a shaped step reward based on goal-distance reduction and terminal bonuses/penalties:
 \begin{equation}
 r_t=
 \begin{cases}
@@ -150,14 +185,22 @@ r_{\mathrm{step}} + \alpha\big(d_{t-1}-d_t\big) - \lambda_E\,\mathcal{E}(a_t).
 \end{equation}
 Here $d_t$ is the Euclidean distance from the USV to the goal at time $t$, and $r_{\mathrm{step}}<0$ encourages efficiency. The term $\mathcal{E}(a_t)$ is an energy-related penalty (e.g., proportional to control effort or commanded speed change), and $\lambda_E$ controls the energy--performance trade-off. This explicit energy term supports our energy consumption analysis and encourages trajectories that are not only safe but also energy efficient.
 
+\paragraph{Energy penalty definition.}
+To explicitly quantify the \emph{propulsion work} contributed by the USV itself (rather than the ambient current), we define $\mathcal{E}(a_t)$ using the commanded steering velocity $V_S(t)$ in Eq.~\eqref{eq:kinematics}. Specifically, let $\Delta t$ be the control interval and define the self-propulsion displacement as $\Delta X_{S,t}=V_S(t)\Delta t$. We then set
+\begin{equation}
+\mathcal{E}(a_t) = \|\Delta X_{S,t}\| = \|V_S(t)\|\Delta t,
+\label{eq:energy_def}
+\end{equation}
+which serves as a simple energy proxy proportional to the magnitude of the control-induced motion. With this definition, $\mathcal{E}(a_t)=0$ when the vehicle drifts with the current (i.e., $V_S(t)=0$), aligning with our goal of encouraging energy-efficient navigation that leverages favorable currents whenever possible.
+
 \subsection{Algorithm Architecture}
 \label{sec:method_arch}
-Our DQN-family and IQN agents share the same observation encoder structure: features from velocity, goal-relative measurements, and LiDAR are first embedded by separate multilayer perceptrons, then concatenated into a fused representation. For the DQN-family baselines, the fused feature is mapped to $|\mathcal{A}|$ scalar action values.
+Our DQN-family and IQN agents share the same observation encoder structure: features from velocity, goal-relative measurements, and LiDAR are first embedded by separate multilayer perceptrons, then concatenated into a fused representation (Fig.~\ref{fig:overview_arch}). For the DQN-family baselines, the fused feature is mapped to $|\mathcal{A}|$ scalar action values.
 
-For IQN, in addition to the fused state feature, we sample quantile fractions $\tau$ and embed them using a cosine feature map. The quantile embedding is combined with the state feature via element-wise multiplication, followed by fully connected layers to output a set of action-conditioned quantile values $\{Z_{\tau}(s,a)\}$. During action selection, we apply a risk distortion $\beta(\cdot)$ (e.g., CVaR-style distortion) to emphasize unfavorable outcomes and compute the distorted action value in Eq.~\eqref{eq:distorted_q}.
+For IQN, in addition to the fused state feature, we sample quantile fractions $\tau$ and embed them using a cosine feature map. The quantile embedding is combined with the state feature via element-wise multiplication, followed by fully connected layers to output a set of action-conditioned quantile values $\{Z_{\tau}(s,a)\}$. During action selection, we apply a risk distortion $\beta(\cdot)$ (e.g., CVaR-style distortion) to emphasize unfavorable outcomes and compute the distorted action value in Eq.~\eqref{eq:distorted_q}, as depicted by the risk-distortion block in Fig.~\ref{fig:overview_arch}.
 
 \paragraph{Adaptive risk sensitivity.}
-To adjust risk sensitivity online, we adapt the distortion parameter based on local difficulty estimated from obstacle proximity. Let $d_{\min}(X)$ be the minimum distance from the USV position $X$ to detected obstacles. We set the risk parameter $\phi$ as
+To adjust risk sensitivity online, we adapt the distortion parameter based on local difficulty estimated from obstacle proximity. As shown in Fig.~\ref{fig:overview_arch}, we use the minimum obstacle distance $d_{\min}(X)$ as a lightweight proxy for local risk level. Let $d_{\min}(X)$ be the minimum distance from the USV position $X$ to detected obstacles. We set the risk parameter $\phi$ as
 \begin{equation}
 \phi =
 \begin{cases}
@@ -173,6 +216,4 @@ so the policy behaves greedily (risk-neutral) when no nearby obstacles are sense
 All training environments are bounded planar workspaces of fixed size, with randomized vortex configurations and obstacle layouts per episode. We adopt a curriculum strategy that gradually increases environment difficulty over training by scaling the number of vortices and obstacles across phases. Start and goal locations are sampled to ensure a minimum separation distance, and episodes terminate on collision, goal reached, out-of-bounds, or timeout.
 
 We employ $\epsilon$-greedy exploration for both DQN-family and IQN agents, with $\epsilon$ decayed linearly from an initial value to a small floor over the early portion of training, and then held constant. Hyperparameters such as learning rate, replay buffer size, batch size, and discount factor follow standard settings for value-based deep RL, and the IQN-specific sampling counts $(N,N',K)$ and Huber threshold $\kappa$ are chosen to balance performance and computational cost.
-For reproducibility, we evaluate policies periodically on a fixed suite of random test environments, and report statistics over multiple random seeds. In addition to task success and time-to-goal, we compute energy consumption by accumulating action-command magnitudes (consistent with the penalty term in Eq.~\eqref{eq:reward_base}).
-
-
+For reproducibility, we evaluate policies periodically on a fixed suite of random test environments, and report statistics over multiple random seeds. In addition to task success and time-to-goal, we compute energy consumption as $\sum_t \|V_S(t)\|\Delta t$ (consistent with the proxy in Eq.~\eqref{eq:energy_def}).
