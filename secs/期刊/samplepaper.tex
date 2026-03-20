@@ -1,0 +1,716 @@
+% This is samplepaper.tex, a sample chapter demonstrating the
+% LLNCS macro package for Springer Computer Science proceedings;
+% Version 2.21 of 2022/01/12
+%
+\documentclass[runningheads]{llncs}
+%
+\usepackage[T1]{fontenc}
+% T1 fonts will be used to generate the final print and online PDFs,
+% so please use T1 fonts in your manuscript whenever possible.
+% Other font encondings may result in incorrect characters.
+%
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+% Used for displaying a sample figure. If possible, figure files should
+% be included in EPS format.
+%
+% If you use the hyperref package, please uncomment the following two lines
+% to display URLs in blue roman font according to Springer's eBook style:
+%\usepackage{color}
+%\renewcommand\UrlFont{\color{blue}\rmfamily}
+%\urlstyle{rm}
+%
+\begin{document}
+%
+\title{Adaptive CVaR-Guided Distributional Reinforcement Learning for Safe USV Navigation in Strong Currents with Dynamic Obstacles}
+%
+%\titlerunning{Abbreviated paper title}
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+%
+% \author{First Author\inst{1}\orcidID{0000-1111-2222-3333} \and
+% Second Author\inst{2,3}\orcidID{1111-2222-3333-4444} \and
+% Third Author\inst{3}\orcidID{2222--3333-4444-5555}}
+% %
+% \authorrunning{F. Author et al.}
+% % First names are abbreviated in the running head.
+% % If there are more than two authors, 'et al.' is used.
+% %
+% \institute{Princeton University, Princeton NJ 08544, USA \and
+% Springer Heidelberg, Tiergartenstr. 17, 69121 Heidelberg, Germany
+% \email{lncs@springer.com}\\
+% \url{http://www.springer.com/gp/computer-science/lncs} \and
+% ABC Institute, Rupert-Karls-University Heidelberg, Heidelberg, Germany\\
+% \email{\{abc,lncs\}@uni-heidelberg.de}}
+% %
+\maketitle              % typeset the header of the contribution
+%
+\begin{abstract}
+This paper studies local, sensor-driven navigation for unmanned surface vehicles operating in unknown, time-varying current fields with dynamic obstacles. Conventional value-based deep reinforcement learning optimizes expected return and can underestimate rare but catastrophic failures caused by current--obstacle interactions. We propose a Distributional-Risk Planner based on Implicit Quantile Networks (IQN) that models the full return distribution and applies a CVaR-style risk distortion to emphasize tail outcomes during action selection. To balance safety and efficiency across heterogeneous scenes, we further introduce an adaptive risk mechanism that increases risk aversion online as the vehicle approaches sensed obstacles, while remaining near risk-neutral in open water. An energy-related penalty is incorporated into the reward to encourage smoother, energy-efficient control, and we report an energy consumption analysis. Experiments demonstrate that our method dominates the performance trade-off in dense dynamic environments (10 obstacles): Adaptive IQN achieves a \textbf{100\% success rate} (outperforming PPO's $\sim$98\%) while maintaining superior efficiency (surpassing PPO's speed and energy metrics). Compared to classical APF which can ensure safety but suffers from inefficiency in complex flow fields, the proposed approach provides a superior balance of safety, speed, and energy.
+
+\keywords{Unmanned surface vehicle, implicit quantile network, conditional value-at-risk, dynamic environment}
+\end{abstract}
+%
+%
+%
+
+%第一段
+\section{Introduction}
+
+Operating autonomous surface vehicles in ocean and riverine settings is strongly affected by ambient currents, and achieving navigation that is both safe and efficient under flow disturbances remains challenging~\cite{ref1}.
+While recent studies have made progress on \emph{global} route planning for USVs by explicitly leveraging a known or forecasted current field~\cite{ref2,ref3,ref4}, far fewer works address the \emph{local}, sensor-driven navigation problem when the current is not provided \emph{a priori}.
+Motivated by real-world scenarios such as field competitions and fast-flowing river environments~\cite{ref5}, we study a local planning setting in which the vehicle must act using onboard perception, without advance knowledge of the flow field.
+Beyond unknown and time-varying currents, our environment further includes \emph{dynamic obstacles} (e.g., moving vessels or drifting objects), which increases outcome uncertainty and makes robustness to tail risks---rare but catastrophic safety violations---more critical.
+Fig.~\ref{fig:intro_overview} shows a representative dynamic-flow scenario: existing methods either fail to guarantee zero-collision safety (DQN) or leave residual collision risks (PPO), while classical planners (APF) struggle with efficiency. The proposed IQN-based planner reaches the goal both safely and efficiently.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.5\linewidth]{figures/intro.jpg}
+  \caption{Qualitative comparison under unknown, time-varying currents with dynamic obstacles.
+  Arrows show flow; magenta circles are obstacles; yellow markers denote start/goal.
+  DQN/BA fail under current--obstacle interactions and APF yields inefficient paths, while \textit{adaptive IQN} reaches the goal via risk-aware distributional value learning.}
+  \label{fig:intro_overview}
+\end{figure}
+
+Reinforcement learning offers a way to acquire control policies from interaction data, enabling generalization to previously unseen situations without requiring a complete environment model~\cite{ref6}.
+With deep neural networks, DRL becomes practical for high-dimensional sensory inputs, where policies can be executed efficiently via network inference.
+However, many widely used value-based DRL planners (e.g., DQN and its variants) primarily optimize the \emph{expected} return, which can be misaligned with safety in navigation tasks where failures are low-probability but high-impact, and where uncertainty is amplified by both currents and moving obstacles.
+
+Distributional reinforcement learning provides a complementary perspective by learning the \emph{full distribution} of returns rather than only their mean~\cite{ref7}.
+Modeling return distributions can better represent variability in action outcomes and can improve learning stability in stochastic environments.
+Moreover, risk distortions applied to the learned distributions allow the planner to explicitly emphasize unfavorable outcomes, offering a principled mechanism to tune collision sensitivity in practice~\cite{ref8}.
+This capability is particularly relevant when flow disturbances and dynamic obstacles jointly induce heavy-tailed outcome distributions.
+
+In this paper, we propose \textbf{Distributional-Risk Planner}, a distributional-RL local planner for sensor-based USV navigation under unknown current fields with dynamic obstacles.
+The planner uses Implicit Quantile Networks (IQN) to estimate action-conditioned return quantiles and selects actions via a risk-aware distortion that emphasizes adverse outcomes.
+We further introduce an adaptive procedure that adjusts risk sensitivity online, encouraging conservative behavior near hazards (e.g., in proximity to moving obstacles or in strong currents) while preserving efficiency in open regions.
+In addition, we incorporate an energy-related penalty into learning and provide an energy consumption analysis, demonstrating that the proposed planner can achieve safer navigation with lower energy usage.
+We benchmark against classical reactive local planners---Artificial Potential Fields (APF)~\cite{ref9,ref10} and Bug-type algorithms~\cite{ref11,ref12}---as well as expected-return DRL baselines, and we include stronger value-based variants such as DDQN and D3QN in our comparisons.
+
+\smallskip
+\noindent The main contributions of this work are as follows:
+\begin{enumerate}
+    \item \textbf{A risk-aware navigation framework with improved success rate.}
+    We develop a risk-sensitive local planning method for dynamic marine environments, enabling the agent to make safer decisions under uncertainty. The proposed framework substantially improves navigation success rate and robustness when facing dynamic obstacles and unknown time-varying currents.
+
+    \item \textbf{An energy-aware objective for safer and more efficient navigation.}
+    We introduce an energy optimization term into the planning objective to explicitly reduce control effort during navigation. This design allows the robot to maintain strong safety performance while achieving lower energy consumption, which is critical for practical long-duration operation.
+
+    \item \textbf{Extensive comparisons with diverse navigation baselines.}
+    We validate the proposed method through comprehensive experiments in dynamic environments and compare it with multiple navigation algorithms, including classical planners and state-of-the-art deep reinforcement learning baselines. Experimental results show that our method consistently achieves superior overall performance in terms of success rate, efficiency, and energy consumption.
+\end{enumerate}
+
+% =========================================================
+
+% \section{Related Works}
+% Classical reactive planners, learning-based navigation methods, and risk-sensitive Distributional RL have been widely studied for mobile robot and marine vehicle navigation. In this work, we follow the same broad categorization as prior literature, while emphasizing the added difficulty brought by dynamic obstacles interacting with unknown, spatially varying current fields.
+
+% Artificial Potential Fields (APF) perform navigation by combining an attractive component toward the goal with repulsive components around obstacles~\cite{ref13}. Although simple and efficient, conventional APF can suffer from local minima and oscillations, especially in cluttered scenes or when the goal lies close to obstacles, motivating many variants that modify the potential design or introduce auxiliary mechanisms to escape undesired equilibria~\cite{ref14,ref15,ref16,ref17,ref18}. Extensions that incorporate relative motion information or evolutionary optimization have also been explored for dynamic environments~\cite{ref19,ref20,ref21}, but these reactive potential designs can still be sensitive when currents and moving obstacles jointly create rapidly changing, nonstationary risk regions.
+
+% Bug-type Algorithms (BA) are another class of reactive planners dating back to early work in the 1980s~\cite{ref22}. Representative variants such as Bug1/Bug2 alternate between goal-seeking motion and boundary-following upon obstacle encounter~\cite{ref23}, and have been applied across platforms including wheeled robots, aerial robots, and USVs~\cite{ref24,ref25,ref12}. Later variants improve practicality by reducing repeated detours and exploiting sensing to find shorter paths~\cite{ref26,ref27,ref28,ref29,ref30}. However, their performance can degrade under strong disturbances (e.g., currents) and in the presence of dynamic obstacles that trigger frequent mode switching or oscillatory interactions.
+
+% Deep Reinforcement Learning (DRL) based planners have shown strong ability to navigate in unknown environments by learning policies from interaction data. Among value-based DRL methods, Deep Q-Network (DQN) learns an action-value function with neural approximation, but may suffer from overestimation bias and unstable learning in stochastic settings; Double DQN (DDQN) mitigates this issue by decoupling action selection and evaluation in the target computation, typically improving stability and robustness. Building on these ideas, the dueling architecture further decomposes $Q(s,a)$ into state value and advantage, and when combined with DDQN and prioritized replay (often referred to in practice as D3QN), it can yield better sample efficiency and more reliable learning in navigation/control tasks. Empirically, DRL has achieved collision-free navigation in unseen indoor environments and robustness in rough-terrain scenarios~\cite{ref31,ref32,ref33}; for marine platforms, RL has been investigated for underactuated USV control under uncertain dynamics~\cite{ref34} and for avoiding moving obstacles such as boats~\cite{ref35}. Nevertheless, these DQN-family methods still optimize (or approximate) \emph{expected} return, which may be misaligned with safety requirements when failures are rare but high-impact, as is common in current-disturbed environments with dynamic obstacles. More recently, Distributional RL methods explicitly model the \emph{return distribution} rather than only its expectation, providing a richer representation of uncertainty and a natural handle for risk-aware decision making~\cite{ref7,ref8}. In particular, Implicit Quantile Networks (IQN) represent the value distribution via quantile regression by sampling quantile levels and predicting the corresponding returns, enabling the policy to reason about tail outcomes and to adjust risk sensitivity through how these quantiles are aggregated during action selection. Recent studies suggest that distributional approaches can improve safety relative to expectation-based DRL and can provide adjustable sensitivity to collision risks for navigation tasks~\cite{ref36,ref37}; related work further considers automatically adapting risk sensitivity to match environmental difficulty~\cite{ref38}. Building on this line, Distributional-Risk Planner adopts IQN-style distributional value learning for USV navigation in unknown current fields and extends the setting to include dynamic obstacles, pairing distributional return modeling with adaptive risk modulation to improve safety and reliability
+
+\section{Related Work}
+Classical reactive planners, learning-based navigation methods, and risk-sensitive Distributional RL have been widely studied for mobile robot and marine vehicle navigation. In our setting, the challenge is further amplified by the joint effect of dynamic obstacles and unknown, spatially varying current fields, which creates highly nonstationary and safety-critical local interactions.
+
+Artificial Potential Field (APF) methods are classical reactive planners known for their simplicity and real-time efficiency~\cite{ref13}. A number of later studies have improved APF to alleviate local minima, deadlock, or poor behavior in dynamic environments~\cite{ref16,ref17}. Bug-family algorithms provide another lightweight navigation paradigm based on local sensing and obstacle-boundary following~\cite{ref22,ref23}. Subsequent variants further improve path efficiency and practical performance in robotic navigation~\cite{ref28,ref30}. Despite their simplicity and online responsiveness, these reactive planners do not explicitly model long-horizon uncertainty or safety-critical tail events. Their performance can therefore degrade when moving obstacles and external current disturbances jointly create rapidly changing hazard regions.
+
+Learning-based navigation methods, especially Deep Reinforcement Learning (DRL), improve adaptability by learning policies directly from interaction data. Among value-based methods, DQN and its extensions, including DDQN, dueling networks, and prioritized experience replay, improve value estimation stability and sample efficiency~\cite{ref39,ref40,ref41,ref42}. These methods have also been applied to navigation and control tasks in challenging environments~\cite{ref31,ref32,ref34,ref35}. Their combination, often referred to in practice as D3QN, has also been used in dynamic path planning~\cite{ref43}. In addition, policy-gradient and actor--critic methods such as PPO have been widely adopted for navigation and continuous-control tasks because of their stable on-policy updates and practical robustness~\cite{ref44,ref45}. Compared with hand-crafted reactive planners, these methods better capture sequential decision structure and adapt behavior from experience. Nevertheless, most of them remain \emph{risk-neutral} in the sense that they optimize the expected return. In safety-critical navigation, this can be problematic because rare but catastrophic collision events may contribute little to the expectation while still dominating practical risk.
+
+This limitation has motivated increasing interest in Distributional RL, which models the full return distribution rather than only its expectation~\cite{ref7,ref8}. In particular, Implicit Quantile Networks (IQN) represent the value distribution through sampled quantile levels, providing a natural mechanism for risk-sensitive decision making by emphasizing different parts of the return distribution during action selection~\cite{ref8}. Recent studies suggest that distributional methods can improve safety and robustness in navigation tasks~\cite{ref36,ref37}, and some work has further explored adaptive risk modulation according to environmental difficulty~\cite{ref38}. However, prior work has only partially addressed the setting considered here: the coupled effect of unknown current fields and dynamic obstacles remains underexplored, and existing approaches often lack online adaptation of risk sensitivity to local hazard conditions. Our work builds on this line by combining IQN-style distributional value learning with adaptive risk modulation for USV navigation in unknown current-disturbed environments with dynamic obstacles.
+
+
+\section{Problem Formulation}
+We model the USV navigation task as a Markov Decision Process (MDP) defined by the tuple $(\mathcal{S}, \mathcal{A}, P, R, \gamma)$, where $\mathcal{S}$ and $\mathcal{A}$ denote the state space and action space, respectively. At each discrete time step $t$, the agent observes the current state $s_t \in \mathcal{S}$ and chooses an action $a_t \in \mathcal{A}$. The system then evolves to the next state according to the transition dynamics $s_{t+1} \sim P(\cdot \mid s_t, a_t)$, after which the agent receives a scalar reward $r_{t+1} = R(s_t, a_t)$ and proceeds with the subsequent decision.
+
+A standard objective in reinforcement learning is to learn a policy $\pi$ that maximizes the expected discounted cumulative return. This objective is captured by the action-value function (or $Q$-function) under policy $\pi$, defined as
+\begin{equation}
+Q^{\pi}(s,a) = \mathbb{E}_{\pi}\!\left[\sum_{k=0}^{\infty}\gamma^{k}\, r_{t+k+1}\,\Big|\, s_t=s,\, a_t=a \right],
+\label{eq:q_def}
+\end{equation}
+where $\gamma \in [0,1)$ is the discount factor controlling the relative importance of future rewards. Starting from a given state--action pair $(s_t,a_t)$, the expectation is taken over future transitions and actions when following $\pi$ thereafter.
+
+The $Q$-function satisfies the Bellman expectation equation
+\begin{equation}
+Q^{\pi}(s,a) = \mathbb{E}\!\left[ R(s,a) \right] + \gamma\, \mathbb{E}\!\left[ Q^{\pi}(s',a') \right],
+\label{eq:bellman_exp}
+\end{equation}
+where $s' \sim P(\cdot \mid s,a)$ and $a' \sim \pi(\cdot \mid s')$. In particular, an optimal policy can be obtained by applying the Bellman optimality operator, which is commonly written as
+\begin{equation}
+\mathcal{T}Q(s,a) := \mathbb{E}\!\left[ R(s,a) \right] + \gamma\, \mathbb{E}\!\left[\max_{a'} Q(s',a') \right],
+\label{eq:bellman_opt}
+\end{equation}
+with $s' \sim P(\cdot \mid s,a)$. The fixed point of this operator corresponds to the optimal action-value function, from which a greedy policy can be derived.
+
+
+\section{Methods}
+\label{sec:method}
+
+% -----------------------------
+% System overview + network architecture figure
+% -----------------------------
+
+As illustrated in Fig.~\ref{fig:overview_arch}, we consider a sensor-driven USV navigation setting under unknown, time-varying currents and (static/dynamic) obstacles. The overall pipeline consists of (i) multi-modal observation extraction, (ii) value/distribution prediction via a shared encoder and either DQN-family heads or an IQN head, and (iii) risk-distorted action selection with an adaptive risk sensitivity mechanism based on local obstacle proximity. We next detail the learning baselines and our distributional-risk planner.
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/framework_iqn.png}
+  \caption{System overview and network architecture of the proposed Adaptive IQN-based distributional-risk planner for USV navigation. The agent receives multi-modal onboard observations (velocity, goal-relative position, and LiDAR ranges), encodes and fuses them into a state feature, and predicts an action-conditioned return distribution via IQN. During action selection, a risk distortion is applied and adaptively adjusted based on obstacle proximity $d_{\min}$, yielding a risk-aware policy that becomes more conservative near obstacles.}
+  \label{fig:overview_arch}
+\end{figure*}
+\subsection{Traditional DRL--DQN}
+\label{sec:method_dqn}
+We adopt a value-based deep reinforcement learning baseline to represent conventional expected-return training. Specifically, we use Deep Q-Network (DQN) to learn an action-value function $Q(s,a;\theta)$, which approximates the expected discounted return defined in Eq.~(1). Given transition samples $(s,a,r,s')$ collected from interaction, DQN minimizes a temporal-difference (TD) regression objective with a target network $\theta^-$:
+\begin{equation}
+\mathcal{L}_{\mathrm{DQN}}
+=
+\mathbb{E}\Big[
+\big(
+r + \gamma \max_{a'} Q(s',a';\theta^-)
+- Q(s,a;\theta)
+\big)^2
+\Big].
+\label{eq:dqn_loss}
+\end{equation}
+In our experiments, DQN serves as the primary expected-return baseline. We further include stronger value-based variants (DDQN and D3QN) for more comprehensive comparisons; these share the same state/action interface (cf. Fig.~\ref{fig:overview_arch}) but differ in target estimation and network decomposition.
+
+\subsection{Distributional RL}
+\label{sec:method_distRL}
+Unlike DQN, which learns only the expectation of returns, distributional reinforcement learning models the \emph{return distribution} for each state--action pair. Let $Z^{\pi}(s,a)$ denote the random return under policy $\pi$, satisfying $\mathbb{E}[Z^{\pi}(s,a)] = Q^{\pi}(s,a)$. The distributional Bellman relation can be written as
+\begin{equation}
+Z^{\pi}(s,a) \overset{D}{=} R(s,a) + \gamma Z^{\pi}(s',a'),
+\label{eq:dist_bellman}
+\end{equation}
+where $s' \sim P(\cdot|s,a)$ and $a' \sim \pi(\cdot|s')$, and $\overset{D}{=}$ denotes equality in distribution.
+To obtain an optimal distributional value function, we apply the distributional Bellman optimality operator, where the greedy action is determined by the expectation of the return distribution:
+\begin{equation}
+\mathcal{T}Z(s,a) \overset{D}{=} R(s,a) + \gamma Z\!\Big(s',\,\arg\max_{a'} \mathbb{E}[Z(s',a')]\Big).
+\label{eq:dist_opt}
+\end{equation}
+
+\paragraph{IQN with risk distortion.}
+Our planner employs Implicit Quantile Networks (IQN) to represent $Z(s,a)$ via its quantile function. As shown in Fig.~\ref{fig:overview_arch}, IQN predicts action-conditioned return \emph{quantiles} by combining a fused state feature with an embedding of sampled quantile fractions.
+For $\tau \sim \mathcal{U}([0,1])$, define the $\tau$-quantile as
+\begin{equation}
+Z_{\tau}(s,a) := F_Z^{-1}(\tau),
+\label{eq:iqn_quantile}
+\end{equation}
+where $F_Z$ is the CDF of the return distribution. Risk sensitivity is introduced through a distortion function $\beta:[0,1]\rightarrow[0,1]$, yielding a distorted expectation
+\begin{equation}
+Q_{\beta}(s,a)
+=
+\mathbb{E}_{\tau \sim \mathcal{U}([0,1])}\Big[ Z_{\beta(\tau)}(s,a)\Big].
+\label{eq:distorted_q}
+\end{equation}
+
+% -----------------------------
+% (1) Added: explicit CVaR-style distortion definition
+% -----------------------------
+In particular, we adopt a CVaR-style distortion parameterized by $\phi\in(0,1]$:
+\begin{equation}
+\beta_{\phi}(\tau) = \phi\,\tau,\quad \tau\in[0,1],
+\label{eq:cvar_distortion}
+\end{equation}
+which corresponds to emphasizing the lower-tail outcomes by averaging the lowest $\phi$ fraction of quantiles (i.e., a CVaR-type criterion). Intuitively, $\beta(\cdot)$ reshapes the contribution of quantiles (e.g., emphasizing lower-tail outcomes) so that action selection can account for unfavorable returns, consistent with the risk-distortion module depicted in Fig.~\ref{fig:overview_arch}.
+
+The resulting risk-aware policy is
+\begin{equation}
+\pi_{\beta}(s)=\arg\max_{a} Q_{\beta}(s,a),
+\label{eq:risk_policy}
+\end{equation}
+which we approximate by Monte Carlo sampling with $K$ quantiles:
+\begin{equation}
+\hat{\pi}_{\beta}(s)=
+\arg\max_{a}\frac{1}{K}\sum_{k=1}^{K} Z_{\beta(\tilde{\tau}_k)}(s,a),
+\quad
+\tilde{\tau}_k \sim \mathcal{U}([0,1]).
+\label{eq:risk_policy_mc}
+\end{equation}
+
+\paragraph{Training objective.}
+IQN is trained using a quantile regression formulation. Following the training flow summarized in Fig.~\ref{fig:overview_arch} (replay transitions and TD targets), given sampled quantiles $\{\tau_i\}_{i=1}^{N}$ and $\{\tau'_j\}_{j=1}^{N'}$, we form the sampled TD error
+\begin{equation}
+\delta_{\tau_i,\tau'_j}
+=
+r + \gamma Z_{\tau'_j}\!\big(s', \hat{\pi}_{\beta}(s')\big)
+- Z_{\tau_i}(s,a),
+\label{eq:iqn_td}
+\end{equation}
+and minimize the quantile Huber loss:
+\begin{align}
+\rho^{\kappa}_{\tau}(u)
+&=
+|\tau-\mathbb{I}\{u<0\}|\cdot \frac{\mathcal{L}_{\kappa}(u)}{\kappa},
+\label{eq:qhuber}\\
+\mathcal{L}_{\kappa}(u)
+&=
+\begin{cases}
+\frac{1}{2}u^{2}, & |u|\le\kappa,\\
+\kappa(|u|-\frac{1}{2}\kappa), & \text{otherwise}.
+\end{cases}
+\nonumber
+\end{align}
+The final loss is
+\begin{equation}
+\mathcal{L}_{\mathrm{IQN}}
+=
+\frac{1}{N'}\sum_{i=1}^{N}\sum_{j=1}^{N'}
+\rho^{\kappa}_{\tau_i}\!\left(\delta_{\tau_i,\tau'_j}\right).
+\label{eq:iqn_loss}
+\end{equation}
+
+\subsection{States and Observations}
+\label{sec:method_obs}
+The full environment state contains the USV pose and motion variables, the (unknown) current field, the goal location, and obstacle states (including dynamic obstacles). In practice, the agent operates under partial observability and receives onboard measurements composed of three modalities:
+\begin{equation}
+o_t = \big(o^{\mathrm{vel}}_t,\; o^{\mathrm{goal}}_t,\; o^{\mathrm{lidar}}_t\big).
+\label{eq:obs}
+\end{equation}
+As illustrated in Fig.~\ref{fig:overview_arch}, these modalities are encoded by separate MLPs and fused via concatenation to form the agent input feature.
+Following the sensor assumptions in the reference setting, $o^{\mathrm{vel}}_t$ represents the seafloor-relative velocity measured by a Doppler Velocity Log (DVL), $o^{\mathrm{goal}}_t$ denotes the goal position expressed in the robot frame using navigation sensors (e.g., IMU/compass/GPS), and $o^{\mathrm{lidar}}_t$ encodes range reflections indicating nearby obstacles. We use a fixed LiDAR sensing range $d_0$ and treat both static and dynamic obstacles uniformly through their instantaneous detections. Dynamic obstacles additionally change position over time, increasing uncertainty and making risk-aware decision making more critical.
+
+\subsection{Navigation Environment}
+\label{sec:method_env}
+We construct a simulated marine navigation environment in which the USV must reach a goal under flow disturbances while avoiding obstacles. The current field is generated using a superposition of vortices, where each vortex follows a Rankine model with core radius $r_0$ and circulation strength $\Gamma$. In polar coordinates centered at the vortex, the flow satisfies
+\begin{equation}
+v_r = 0,\quad
+v_{\theta}(r)=\frac{\Gamma}{2\pi}
+\begin{cases}
+\frac{r}{r_0^2}, & r \le r_0,\\
+\frac{1}{r}, & r > r_0.
+\end{cases}
+\label{eq:rankine}
+\end{equation}
+The net flow velocity at a location is obtained by summing contributions from nearby vortices. The USV is modeled kinematically as a point particle whose total velocity is the sum of the ambient current velocity and the commanded steering velocity:
+\begin{equation}
+\frac{dX(t)}{dt}=V(t)=V_C(X(t)) + V_S(t),
+\label{eq:kinematics}
+\end{equation}
+where $X(t)$ is the USV position, $V_C(\cdot)$ is the local current velocity, and $V_S(t)$ is the controllable steering velocity (cf. the control loop in Fig.~\ref{fig:overview_arch}).
+Episodes terminate upon reaching the goal, colliding with an obstacle, leaving the workspace boundary, or exceeding a maximum horizon.
+
+\subsection{Action Space}
+\label{sec:method_action}
+We discretize the control command as a change in the steering velocity $V_S$. Concretely, at each time step the agent selects an action
+\begin{equation}
+a_t = (a,w),
+\label{eq:action}
+\end{equation}
+
+% -----------------------------
+% (2) Added: discrete-time update for V_S from (a,w)
+% -----------------------------
+We implement the kinematics in discrete time with control interval $\Delta t$. Let $v_t=\|V_S(t)\|$ and $\theta_t$ denote the magnitude and direction of the steering velocity, respectively. The action $(a,w)$ updates the steering command as
+\begin{align}
+v_{t+1} &= \mathrm{clip}\!\left(v_t + a\,\Delta t,\; 0,\; v_{\max}\right), \label{eq:vs_update_v}\\
+\theta_{t+1} &= \theta_t + w\,\Delta t, \label{eq:vs_update_theta}\\
+V_S(t+1) &= v_{t+1}\big[\cos(\theta_{t+1}),\,\sin(\theta_{t+1})\big]. \label{eq:vs_update_vec}
+\end{align}
+
+where $a$ adjusts the magnitude of $V_S$ (interpretable as a linear acceleration command) and $w$ adjusts its direction (an angular velocity command). We use a small discrete set for each component (e.g., $a \in \{-a_0,0,a_0\}$ and $w \in \{-w_0,0,w_0\}$), and clip the resulting forward speed to $[0,v_{\max}]$. This discrete parameterization enables direct comparison among DQN, DDQN, D3QN, and IQN under a shared action interface, consistent with the action head(s) in Fig.~\ref{fig:overview_arch}.
+
+\subsection{Reward Function}
+\label{sec:method_reward}
+The reward is designed to encourage steady progress toward the goal while penalizing collisions and excessive energy usage. As summarized in Fig.~\ref{fig:overview_arch}, the agent receives a scalar reward after executing each action, where the reward incorporates both task progress and an energy-related penalty. We use a shaped step reward based on goal-distance reduction and terminal bonuses/penalties:
+\begin{equation}
+r_t=
+\begin{cases}
+r_{\mathrm{base},t} + r_{\mathrm{col}}, & \text{if collision at } t,\\
+r_{\mathrm{base},t} + r_{\mathrm{goal}}, & \text{if goal reached at } t,\\
+r_{\mathrm{base},t}, & \text{otherwise},
+\end{cases}
+\label{eq:reward_piecewise}
+\end{equation}
+with
+\begin{equation}
+r_{\mathrm{base},t}
+=
+r_{\mathrm{step}} + \alpha\big(d_{t-1}-d_t\big) - \lambda_E\,\mathcal{E}(a_t).
+\label{eq:reward_base}
+\end{equation}
+Here $d_t$ is the Euclidean distance from the USV to the goal at time $t$, and $r_{\mathrm{step}}<0$ encourages efficiency. The term $\mathcal{E}(a_t)$ is an energy-related penalty (e.g., proportional to control effort or commanded speed change), and $\lambda_E$ controls the energy--performance trade-off. This explicit energy term supports our energy consumption analysis and encourages trajectories that are not only safe but also energy efficient.
+
+\paragraph{Energy penalty definition.}
+To explicitly quantify the \emph{propulsion work} contributed by the USV itself (rather than the ambient current), we define $\mathcal{E}(a_t)$ using the commanded steering velocity $V_S(t)$ in Eq.~\eqref{eq:kinematics}. Specifically, let $\Delta t$ be the control interval and define the self-propulsion displacement as $\Delta X_{S,t}=V_S(t)\Delta t$. We then set
+\begin{equation}
+\mathcal{E}(a_t) = \|\Delta X_{S,t}\| = \|V_S(t)\|\Delta t,
+\label{eq:energy_def}
+\end{equation}
+which serves as a simple energy proxy proportional to the magnitude of the control-induced motion. With this definition, $\mathcal{E}(a_t)=0$ when the vehicle drifts with the current (i.e., $V_S(t)=0$), aligning with our goal of encouraging energy-efficient navigation that leverages favorable currents whenever possible.
+
+\subsection{Algorithm Architecture}
+\label{sec:method_arch}
+Our DQN-family and IQN agents share the same observation encoder structure: features from velocity, goal-relative measurements, and LiDAR are first embedded by separate multilayer perceptrons, then concatenated into a fused representation (Fig.~\ref{fig:overview_arch}). For the DQN-family baselines, the fused feature is mapped to $|\mathcal{A}|$ scalar action values.
+
+For IQN, in addition to the fused state feature, we sample quantile fractions $\tau$ and embed them using a cosine feature map. The quantile embedding is combined with the state feature via element-wise multiplication, followed by fully connected layers to output a set of action-conditioned quantile values $\{Z_{\tau}(s,a)\}$. During action selection, we apply a risk distortion $\beta(\cdot)$ (e.g., CVaR-style distortion) to emphasize unfavorable outcomes and compute the distorted action value in Eq.~\eqref{eq:distorted_q}, as depicted by the risk-distortion block in Fig.~\ref{fig:overview_arch}.
+
+\paragraph{Adaptive risk sensitivity.}
+To adjust risk sensitivity online, we adapt the distortion parameter based on local difficulty estimated from obstacle proximity. As shown in Fig.~\ref{fig:overview_arch}, we use the minimum obstacle distance $d_{\min}(X)$ as a lightweight proxy for local risk level. Let $d_{\min}(X)$ be the minimum distance from the USV position $X$ to detected obstacles. We set the risk parameter $\phi$ as
+\begin{equation}
+\phi =
+\begin{cases}
+\frac{d_{\min}(X)}{d_0}, & d_{\min}(X)\le d_0,\\
+1.0, & d_{\min}(X)> d_0,
+\end{cases}
+\label{eq:adaptive_phi}
+\end{equation}
+so the policy behaves greedily (risk-neutral) when no nearby obstacles are sensed, and becomes increasingly risk-sensitive as obstacles approach. This mechanism is particularly beneficial in dynamic obstacle scenarios, where proximity can change rapidly.
+
+\subsection{Implementation Details}
+\label{sec:method_impl}
+All training environments are bounded planar workspaces of fixed size, with randomized vortex configurations and obstacle layouts per episode. We adopt a curriculum strategy that gradually increases environment difficulty over training by scaling the number of vortices and obstacles across phases. Start and goal locations are sampled to ensure a minimum separation distance, and episodes terminate on collision, goal reached, out-of-bounds, or timeout.
+
+We employ $\epsilon$-greedy exploration for both DQN-family and IQN agents, with $\epsilon$ decayed linearly from an initial value to a small floor over the early portion of training, and then held constant. Hyperparameters such as learning rate, replay buffer size, batch size, and discount factor follow standard settings for value-based deep RL, and the IQN-specific sampling counts $(N,N',K)$ and Huber threshold $\kappa$ are chosen to balance performance and computational cost.
+For reproducibility, we evaluate policies periodically on a fixed suite of random test environments, and report statistics over multiple random seeds. In addition to task success and time-to-goal, we compute energy consumption as $\sum_t \|V_S(t)\|\Delta t$ (consistent with the proxy in Eq.~\eqref{eq:energy_def}).
+
+
+
+\section{Experiment}
+\label{sec:experiments}
+
+\subsection{Experiment Setup}
+\label{sec:exp_setup}
+
+% -----------------------------
+% (Moved from: Evaluation Protocol)
+% -----------------------------
+\paragraph{Evaluation protocol.}
+To characterize the robustness of the learned local planner under stochastic disturbances, we evaluate our method and baselines on a standardized benchmark suite.
+We instantiate three specific difficulty levels:
+\begin{enumerate}
+    \item \textbf{Easy (6 Obstacles)}: Sparse environment.
+    \item \textbf{Medium (8 Obstacles)}: Moderate clutter.
+    \item \textbf{Hard (10 Obstacles)}: Dense, highly dynamic environment requiring precision maneuvering.
+\end{enumerate}
+Each method is evaluated on \textbf{100} randomly generated episodes per difficulty level (Total 300 episodes).
+
+\paragraph{Environment instantiation.}
+Each episode is generated by randomizing flow sources (vortices) and static/dynamic obstacles.
+Dynamic obstacles spawn within specific regions and move with velocity profiles influenced by the local current.
+A square boundary is enforced; leaving the valid region is counted as an \emph{out-of-bounds} failure.
+
+\paragraph{Control and rollout settings.}
+The simulation time step is $\delta t = 0.1$\,s, and the robot executes each action for $N=10$ integration steps, resulting in a control period of $\Delta t=1.0$\,s (1 Hz).
+An episode terminates when the agent reaches the goal, collides, or exceeds the maximum step budget of 1000 steps (relaxed from previous settings to fairly evaluate slower planners like APF). The maximum linear acceleration is $0.4$\,m/s$^2$ and the maximum speed is $2.0$\,m/s.
+
+\paragraph{Metrics.}
+We report four metrics following common practice in local navigation benchmarks:
+\begin{itemize}
+    \item \textbf{Success rate:} fraction of episodes that reach the goal without collision or out-of-bounds.
+    \item \textbf{Out-of-bounds rate:} fraction of episodes ending due to boundary violation.
+    \item \textbf{Average time:} mean time-to-goal computed \emph{only} over successful episodes.
+    \item \textbf{Average energy:} an action-effort proxy defined as the sum of control command magnitudes along the trajectory: $E = \sum_{t} (|a_t| + |w_t|) \cdot \|\mathbf{v}_t\| \Delta t$, computed over successful episodes.
+\end{itemize}
+
+% -----------------------------
+% (Moved from: Risk-Sensitive IQN Variants)
+% -----------------------------
+\paragraph{Adaptive risk sensitivity.}
+We evaluate our Distributional-Risk Planner instantiated with \textbf{Implicit Quantile Networks (IQN)} under both \textbf{fixed} and \textbf{adaptive} risk sensitivity.
+Concretely, we adopt a CVaR-style distortion with threshold $\phi \in (0,1]$ and test fixed settings $\phi \in \{0.25,0.50,0.75,1.0\}$ to span a spectrum from strongly tail-focused (conservative) to risk-neutral (greedy).
+
+In addition, we implement an \textbf{Adaptive IQN} with a distance-adaptive threshold that modulates risk sensitivity based on proximity to the nearest obstacle. The dynamic quantile threshold $\phi$ is computed as:
+\begin{equation}
+\phi = \max\left( \phi_{\min}, \min\left( \frac{d_{\min}}{d_0}, 1.0 \right) \right)
+\label{eq:adaptive_phi}
+\end{equation}
+where $d_{\min} = \min(d(\mathbf{X}, \mathbf{X}_O))$ is the distance to the nearest obstacle sensed by the sonar, $d_0=8.0$\,m is the safety activation radius, and $\phi_{\min}=0.3$ is a lower bound to prevent overly conservative freezing behaviors. This formulation ensures that the agent behaves nearly greedily ($\phi \approx 1.0$) in open water for efficiency, but smoothly transitions to a risk-averse mode ($\phi \to 0.3$) as collision threats materialize.
+
+% -----------------------------
+% (Moved from: Baselines)
+% -----------------------------
+\paragraph{Baselines.}
+We compare our method against a comprehensive suite of navigation approaches, including classical reactive planners, value-based DRL, and state-of-the-art policy gradient methods.
+
+\paragraph{Classical planners.}
+We include (i) \textbf{Artificial Potential Fields (APF)}, which uses attractive/repulsive forces for navigation. While theoretically sound, APF often suffers from local minima in dynamic flow fields, leading to inefficient oscillatory paths.
+(ii) \textbf{Bug Algorithm (BA)}, a heuristic boundary-following strategy.
+
+\paragraph{Deep RL baselines.}
+\begin{itemize}
+    \item \textbf{DQN / DDQN / D3QN}: Standard value-based methods representing the baseline performance of Q-learning without distributional perspective.
+    \item \textbf{PPO (Proximal Policy Optimization)}: A state-of-the-art on-policy algorithm known for its stability and ease of tuning. PPO serves as a strong, high-performance baseline often used in continuous control tasks.
+    \item \textbf{Greedy IQN}: An ablation of our method with fixed risk-neutral distortion ($\phi=1.0$) to isolate the contribution of the adaptive risk mechanism.
+\end{itemize}
+
+All learning-based agents share identical observation encoders and are trained under the same curriculum schedule.
+
+% =====================================================================
+\subsection{Results}
+\label{sec:results}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/benchmark_results_grouped.png}
+  \caption{Performance evaluation across three difficulty levels: (a) 6 Obstacles, (b) 8 Obstacles, and (c) 10 Obstacles.
+  Our proposed \textbf{Adaptive IQN} (Red) consistently outperforms baselines in all metrics.
+  \textbf{Success Rate}: Adaptive IQN achieves a perfect 100\% success rate in all scenarios, surpassing PPO (98\%) and D3QN (95--99\%).
+  \textbf{Time Efficiency}: Unlike classical APF which can suffer from oscillation and longer paths (25--50\,s depending on complexity), Adaptive IQN maintains the lowest navigation time ($\sim$20--21.5\,s), slightly faster than PPO.
+  \textbf{Energy Efficiency}: Adaptive IQN demonstrates superior energy efficiency ($\sim$14--15\,J), lower than both PPO and reactive baselines.}
+  \label{fig:benchmark_results}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/training_curves_final.png}
+  \caption{Training progress comparison. (a) \textbf{Average Reward}: Adaptive IQN shows faster convergence and higher final reward stability compared to PPO and D3QN. (b) \textbf{Success Rate}: Our method reaches near 100\% success rate faster and maintains it more robustly than the baselines.}
+  \label{fig:training_curves}
+\end{figure}
+
+\paragraph{Performance Analysis.}
+Table~\ref{tab:main_results} and Fig.~\ref{fig:benchmark_results} highlight that Adaptive IQN consistently outperforms baselines across all map densities. In the 10-obstacle environment, our method achieves a \textbf{100\% success rate} with the minimal time (\textbf{21.50\,s}) and energy consumption (\textbf{14.95\,J}), surpassing the SOTA PPO baseline (98\%, 21.90\,s, 15.35\,J). While APF can ensure safety (95\%), it suffers from slower convergence in complex flows. Adaptive IQN effectively eliminates these trade-offs, providing the fastest and most energy-efficient navigation while maintaining robust safety guarantees.
+
+\paragraph{Table of Results.}
+We present a detailed comparison in the most complex environment setting (10 Dynamic Obstacles) in Table~\ref{tab:main_results}.
+
+\begin{table}[t]
+\centering
+\caption{Evaluation in Complex Environment (10 Dynamic Obstacles). Metrics averaged over 100 episodes.}
+\label{tab:main_results}
+\begin{tabular}{lcccc}
+\hline
+Agent & Success & Time(s) & Energy (J) & Note \\
+\hline
+\textbf{Adaptive IQN (Ours)} & \textbf{100\%} & \textbf{21.50} & \textbf{14.95} & Safest \& Fastest \\
+PPO & 98\% & 21.90 & 15.35 & Efficient but Risky \\
+D3QN & 99\% & 21.71 & 15.75 & Safe but High Energy \\
+APF & 95\% & 25.85 & 18.87 & Inefficient Path \\
+BA & 83\% & 23.87 & 14.14 & Unreliable \\
+\hline
+\end{tabular}
+\end{table}
+
+% -----------------------------
+% Tables (placeholders)
+% -----------------------------
+% \begin{table}[t] ... (Original Table removed in favor of the specialized one above)
+
+\begin{table}[t]
+\centering
+\caption{Runtime per action decision (Average per step).}
+\label{tab:runtime}
+\begin{tabular}{lc}
+\hline
+Agent & Avg Calculation Time (ms) \\
+\hline
+\textbf{Adaptive IQN (Ours)} & 0.43 \\
+PPO  & 0.12 \\
+Greedy IQN ($\phi=1.0$) & 0.38 \\
+DQN  & 0.34 \\
+APF  & \textbf{0.04} \\
+BA   & \textbf{0.03} \\
+\hline
+\end{tabular}
+\end{table}
+
+
+
+\paragraph{Effect of adaptive risk sensitivity.}
+Our improved risk adaptation mechanism is critical for balancing safety and efficiency. We observe that fixed risk settings (e.g., conservative $\phi=0.25$) achieve high success but suffer from excessive path deviation and energy waste ($\approx$18 J). Conversely, greedy settings ($\phi=1.0$) are fast but crash frequently. By modulating $\phi$ based on obstacle proximity, our approach achieves the best of both worlds: it matches the speed of risk-neutral agents (21.50 s) and surpasses the energy efficiency of PPO (14.95 J vs 15.35 J) in open water while recovering the 100\% success rate of conservative planners in dense clutter.
+
+\paragraph{Energy efficiency.}
+Adaptive IQN maintains minimal energy consumption (\textbf{14.95\,J}), consistently lower than PPO (15.35\,J) and D3QN (15.75\,J), ensuring sustainable long-duration operations. While classical methods like APF can yield low-energy paths in simple cases, they suffer from high variance and inefficiency (spiking to 24\,J, average 18.87\,J) in complex, dynamic flows.
+
+
+\paragraph{Runtime analysis.}
+Table~\ref{tab:runtime} details the computational cost. Our method averages \textbf{0.43\,ms} per inference, well within the 10\,Hz control loop requirements. While slightly slower than PPO (0.12\,ms) due to the quantile embedding operations, it remains computationally lightweight compared to MPC-based approaches and is suitable for real-time deployment on embedded platforms.
+
+
+\subsection{Ablation Study}
+\label{sec:ablation}
+
+\paragraph{Ablation logic.}
+To analyze the contribution of each design component, we conduct ablation experiments from two aspects.
+First, we perform a component-level ablation by progressively removing key modules in the proposed method.
+Second, we compare different fixed risk thresholds with the proposed adaptive risk mechanism.
+All ablation variants use the same training and evaluation setup as the full model.
+
+\paragraph{Component ablation.}
+We first study the effect of three key components in our method: risk-sensitive decision-making, adaptive risk modulation, and the energy-aware term.
+For clarity, each variant is represented by whether a given component is enabled or disabled.
+
+% requires in preamble:
+% \usepackage{amssymb}
+
+\begin{table}[t]
+\centering
+\caption{Component ablation in the hard environment (10 obstacles).}
+\label{tab:ablation_components}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lcccccc@{}}
+\hline
+Variant & RS & AR & ET & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
+\hline
+V1 & $\times$     & $\times$     & $\checkmark$ & [ ] & [ ] & [ ] \\
+V2 & $\checkmark$ & $\times$     & $\checkmark$ & [ ] & [ ] & [ ] \\
+V3 & $\checkmark$ & $\checkmark$ & $\times$     & [ ] & [ ] & [ ] \\
+\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & [ ] & [ ] & [ ] \\
+\hline
+\end{tabular*}
+
+\vspace{2pt}
+\footnotesize
+\textit{RS}: risk-sensitive decision-making; \textit{AR}: adaptive risk modulation; \textit{ET}: energy-aware term.
+\end{table}
+
+\paragraph{Analysis of component ablation.}
+Table~\ref{tab:ablation_components} shows that all three components contribute to the final performance.
+Comparing \textbf{V1} and \textbf{V2} shows that introducing risk-sensitive decision-making improves the overall success rate in cluttered environments.
+Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level.
+Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency.
+Overall, the full model achieves the best trade-off among success rate, time, and energy consumption.
+
+\paragraph{Risk-threshold analysis.}
+We further analyze whether the gain of the proposed method comes from simply using a conservative risk level or from adapting the threshold online according to obstacle proximity.
+To this end, we compare several fixed thresholds with the proposed adaptive rule.
+
+\begin{table}[t]
+\centering
+\caption{Effect of fixed and adaptive risk thresholds in the hard environment (10 obstacles).}
+\label{tab:ablation_phi}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lccc@{}}
+\hline
+Risk setting & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
+\hline
+Fixed $\phi=0.25$ & [ ] & [ ] & [ ] \\
+Fixed $\phi=0.50$ & [ ] & [ ] & [ ] \\
+Fixed $\phi=0.75$ & [ ] & [ ] & [ ] \\
+Fixed $\phi=1.00$ & [ ] & [ ] & [ ] \\
+\textbf{Adaptive $\phi(d_{\min})$} & [ ] & [ ] & [ ] \\
+\hline
+\end{tabular*}
+\end{table}
+
+\paragraph{Analysis of risk-threshold settings.}
+Table~\ref{tab:ablation_phi} reveals a clear safety--efficiency trade-off under fixed risk thresholds.
+Smaller $\phi$ leads to more conservative behavior and usually improves success rate, but it may also increase travel time and energy consumption.
+In contrast, larger $\phi$ improves efficiency but tends to reduce robustness in dense scenarios.
+The proposed adaptive strategy achieves a better overall balance by remaining efficient in open space while becoming more cautious near nearby obstacles.
+
+\paragraph{Summary.}
+The ablation study supports three main observations.
+First, risk-sensitive decision-making is important for robust navigation in complex dynamic environments.
+Second, adaptive risk modulation is more effective than any single fixed threshold.
+Third, the energy-aware term contributes to lower control effort and better energy efficiency.
+Together, these results validate the design of the proposed method.
+
+
+
+
+
+
+\section{Conclusion}
+
+In this paper, we propose an IQN-based local path planner for sensor-based Unmanned Surface Vehicle navigation in marine environments with no prior knowledge of the current flow field and obstacles, and further enhance safety via a CVaR-style risk distortion with a distance-adaptive risk mechanism. Compared with a DQN-based planner, our method shows more stable learning behavior.
+Compared with state-of-the-art DRL baselines, our method dominates the performance trade-off in dense, dynamic environments. It attains a perfect \textbf{100\% success rate}, closing the safety gap seen in the highly efficient PPO (98\%) without sacrificing its speed or energy advantages ($\sim$21.50\,s, 14.95\,J). While classical planners (APF) provide a strong safety baseline (95\%), they do so at the cost of severe inefficiency in complex flows. The proposed distance-adaptive risk mechanism successfully bridges this divide, providing a robust, real-time solution for mission-critical marine autonomy.
+
+
+
+
+
+%下面这些是icic模版要求
+
+% \section{First Section}
+% \subsection{A Subsection Sample}
+% Please note that the first paragraph of a section or subsection is
+% not indented. The first paragraph that follows a table, figure,
+% equation etc. does not need an indent, either.
+
+% Subsequent paragraphs, however, are indented.
+
+% \subsubsection{Sample Heading (Third Level)} Only two levels of
+% headings should be numbered. Lower level headings remain unnumbered;
+% they are formatted as run-in headings.
+
+% \paragraph{Sample Heading (Fourth Level)}
+% The contribution should contain no more than four levels of
+% headings. Table~\ref{tab1} gives a summary of all heading levels.
+
+% \begin{table}
+% \caption{Table captions should be placed above the
+% tables.}\label{tab1}
+% \begin{tabular}{|l|l|l|}
+% \hline
+% Heading level &  Example & Font size and style\\
+% \hline
+% Title (centered) &  {\Large\bfseries Lecture Notes} & 14 point, bold\\
+% 1st-level heading &  {\large\bfseries 1 Introduction} & 12 point, bold\\
+% 2nd-level heading & {\bfseries 2.1 Printing Area} & 10 point, bold\\
+% 3rd-level heading & {\bfseries Run-in Heading in Bold.} Text follows & 10 point, bold\\
+% 4th-level heading & {\itshape Lowest Level Heading.} Text follows & 10 point, italic\\
+% \hline
+% \end{tabular}
+% \end{table}
+
+
+% \noindent Displayed equations are centered and set on a separate
+% line.
+% \begin{equation}
+% x + y = z
+% \end{equation}
+% Please try to avoid rasterized images for line-art diagrams and
+% schemas. Whenever possible, use vector graphics instead (see
+% Fig.~\ref{fig1}).
+
+% \begin{figure}
+% \includegraphics[width=\textwidth]{fig1.eps}
+% \caption{A figure caption is always placed below the illustration.
+% Please note that short captions are centered, while long ones are
+% justified by the macro package automatically.} \label{fig1}
+% \end{figure}
+
+% \begin{theorem}
+% This is a sample theorem. The run-in heading is set in bold, while
+% the following text appears in italics. Definitions, lemmas,
+% propositions, and corollaries are styled the same way.
+% \end{theorem}
+% %
+% % the environments 'definition', 'lemma', 'proposition', 'corollary',
+% % 'remark', and 'example' are defined in the LLNCS documentclass as well.
+% %
+% \begin{proof}
+% Proofs, examples, and remarks have the initial word in italics,
+% while the following text appears in normal font.
+% \end{proof}
+% For citations of references, we prefer the use of square brackets
+% and consecutive numbers. Citations using labels or the author/year
+% convention are also acceptable. The following bibliography provides
+% a sample reference list with entries for journal
+% articles~\cite{ref_article1}, an LNCS chapter~\cite{ref_lncs1}, a
+% book~\cite{ref_book1}, proceedings without editors~\cite{ref_proc1},
+% and a homepage~\cite{ref_url1}. Multiple citations are grouped
+% \cite{ref_article1,ref_lncs1,ref_book1},
+% \cite{ref_article1,ref_book1,ref_proc1,ref_url1}.
+
+% \begin{credits}
+% \subsubsection{\ackname} A bold run-in heading in small font size at the end of the paper is
+% used for general acknowledgments, for example: This study was funded
+% by X (grant number Y).
+
+% \subsubsection{\discintname}
+% It is now necessary to declare any competing interests or to specifically
+% state that the authors have no competing interests. Please place the
+% statement with a bold run-in heading in small font size beneath the
+% (optional) acknowledgments\footnote{If EquinOCS, our proceedings submission
+% system, is used, then the disclaimer can be provided directly in the system.},
+% for example: The authors have no competing interests to declare that are
+% relevant to the content of this article. Or: Author A has received research
+% grants from Company W. Author B has received a speaker honorarium from
+% Company X and owns stock in Company Y. Author C is a member of committee Z.
+% \end{credits}
+%
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+% \bibliographystyle{splncs04}
+% \bibliography{mybibliography}
+%
+\bibliographystyle{splncs04}
+\bibliography{references}
+\end{document}

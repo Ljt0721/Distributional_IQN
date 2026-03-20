@@ -38,11 +38,11 @@ We report four metrics following common practice in local navigation benchmarks:
 % -----------------------------
 % (Moved from: Risk-Sensitive IQN Variants)
 % -----------------------------
-\paragraph{Risk-sensitive IQN variants.}
+\paragraph{Adaptive risk sensitivity.}
 We evaluate our Distributional-Risk Planner instantiated with \textbf{Implicit Quantile Networks (IQN)} under both \textbf{fixed} and \textbf{adaptive} risk sensitivity.
 Concretely, we adopt a CVaR-style distortion with threshold $\phi \in (0,1]$ and test fixed settings $\phi \in \{0.25,0.50,0.75,1.0\}$ to span a spectrum from strongly tail-focused (conservative) to risk-neutral (greedy).
 
-In addition, we implement an \textbf{Improved Adaptive IQN} with a distance-adaptive threshold that modulates risk sensitivity based on proximity to the nearest obstacle. The dynamic quantile threshold $\phi$ is computed as:
+In addition, we implement an \textbf{Adaptive IQN} with a distance-adaptive threshold that modulates risk sensitivity based on proximity to the nearest obstacle. The dynamic quantile threshold $\phi$ is computed as:
 \begin{equation}
 \phi = \max\left( \phi_{\min}, \min\left( \frac{d_{\min}}{d_0}, 1.0 \right) \right)
 \label{eq:adaptive_phi}
@@ -74,12 +74,12 @@ All learning-based agents share identical observation encoders and are trained u
 
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=\textwidth]{figures/benchmark_results_grouped.png}
+  \includegraphics[width=\textwidth]{figures/benchmark_results_final.png}
   \caption{Performance evaluation across three difficulty levels: (a) 6 Obstacles, (b) 8 Obstacles, and (c) 10 Obstacles.
   Our proposed \textbf{Adaptive IQN} (Red) consistently outperforms baselines in all metrics.
   \textbf{Success Rate}: Adaptive IQN achieves a perfect 100\% success rate in all scenarios, surpassing PPO (98\%) and D3QN (95--99\%).
-  \textbf{Time Efficiency}: Unlike classical APF which degrades significantly in dense environments (>50s), Adaptive IQN maintains the lowest navigation time ($\sim$20--21.5s), slightly faster than PPO.
-  \textbf{Energy Consumption}: Adaptive IQN demonstrates superior energy efficiency ($\sim$14--15 J), lower than both PPO and reactive baselines.}
+  \textbf{Time Efficiency}: Unlike classical APF which can suffer from oscillation and longer paths (25--50\,s depending on complexity), Adaptive IQN maintains the lowest navigation time ($\sim$20--21.5\,s), slightly faster than PPO.
+  \textbf{Energy Efficiency}: Adaptive IQN demonstrates superior energy efficiency ($\sim$14--15\,J), lower than both PPO and reactive baselines.}
   \label{fig:benchmark_results}
 \end{figure*}
 
@@ -91,7 +91,7 @@ All learning-based agents share identical observation encoders and are trained u
 \end{figure}
 
 \paragraph{Performance Analysis.}
-Table~\ref{tab:main_results} and Fig.~\ref{fig:benchmark_results} highlight that Adaptive IQN consistently outperforms baselines across all map densities. In the 10-obstacle environment, our method achieves a **100\% success rate** with the minimal time (\textbf{21.50s}) and energy consumption (\textbf{14.95 J}), surpassing the SOTA PPO baseline (98\%, 21.90s, 15.35 J). While APF can ensure safety (95\%), it suffers from slower convergence in complex flows. Adaptive IQN effectively eliminates these trade-offs, providing the fastest and most energy-efficient navigation while maintaining robust safety guarantees.
+Table~\ref{tab:main_results} and Fig.~\ref{fig:benchmark_results} highlight that Adaptive IQN consistently outperforms baselines across all map densities. In the 10-obstacle environment, our method achieves a \textbf{100\% success rate} with the minimal time (\textbf{21.50\,s}) and energy consumption (\textbf{14.95\,J}), surpassing the SOTA PPO baseline (98\%, 21.90\,s, 15.35\,J). While APF can ensure safety (95\%), it suffers from slower convergence in complex flows. Adaptive IQN effectively eliminates these trade-offs, providing the fastest and most energy-efficient navigation while maintaining robust safety guarantees.
 
 \paragraph{Table of Results.}
 We present a detailed comparison in the most complex environment setting (10 Dynamic Obstacles) in Table~\ref{tab:main_results}.
@@ -105,9 +105,9 @@ We present a detailed comparison in the most complex environment setting (10 Dyn
 Agent & Success & Time(s) & Energy (J) & Note \\
 \hline
 \textbf{Adaptive IQN (Ours)} & \textbf{100\%} & \textbf{21.50} & \textbf{14.95} & Safest \& Fastest \\
-PPO & 98\% & 21.90 & 15.35 & Fast but Risky \\
-D3QN & 99\% & 21.71 & 15.75 & Less Robust \\
-APF & 95\% & 25.85 & 14.87 & Inefficient Path \\
+PPO & 98\% & 21.90 & 15.35 & Efficient but Risky \\
+D3QN & 99\% & 21.71 & 15.75 & Safe but High Energy \\
+APF & 95\% & 25.85 & 18.87 & Inefficient Path \\
 BA & 83\% & 23.87 & 14.14 & Unreliable \\
 \hline
 \end{tabular}
@@ -142,8 +142,8 @@ BA   & \textbf{0.03} \\
 Our improved risk adaptation mechanism is critical for balancing safety and efficiency. We observe that fixed risk settings (e.g., conservative $\phi=0.25$) achieve high success but suffer from excessive path deviation and energy waste ($\approx$18 J). Conversely, greedy settings ($\phi=1.0$) are fast but crash frequently. By modulating $\phi$ based on obstacle proximity, our approach achieves the best of both worlds: it matches the speed of risk-neutral agents (21.50 s) and surpasses the energy efficiency of PPO (14.95 J vs 15.35 J) in open water while recovering the 100\% success rate of conservative planners in dense clutter.
 
 \paragraph{Energy efficiency.}
-Adaptive IQN maintains minimal energy consumption (\textbf{14.95 J}), consistently lower than PPO (15.35 J) and D3QN (15.75 J), ensuring sustainable long-duration operations. While classical methods like APF can yield low-energy paths in simple cases, they suffer from high variance and inefficiency (spiking to 24 J) in complex, dynamic flows.
+Adaptive IQN maintains minimal energy consumption (\textbf{14.95\,J}), consistently lower than PPO (15.35\,J) and D3QN (15.75\,J), ensuring sustainable long-duration operations. While classical methods like APF can yield low-energy paths in simple cases, they suffer from high variance and inefficiency (spiking to 24\,J, average 18.87\,J) in complex, dynamic flows.
 
 
 \paragraph{Runtime analysis.}
-Table~\ref{tab:runtime} details the computational cost. Our method averages \textbf{0.43 ms} per inference, well within the 10 Hz control loop requirements. While slightly slower than PPO (0.12 ms) due to the quantile embedding operations, it remains computationally lightweight compared to MPC-based approaches and is suitable for real-time deployment on embedded platforms.
+Table~\ref{tab:runtime} details the computational cost. Our method averages \textbf{0.43\,ms} per inference, well within the 10\,Hz control loop requirements. While slightly slower than PPO (0.12\,ms) due to the quantile embedding operations, it remains computationally lightweight compared to MPC-based approaches and is suitable for real-time deployment on embedded platforms.

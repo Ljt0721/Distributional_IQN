@@ -4,7 +4,7 @@ Operating autonomous surface vehicles in ocean and riverine settings is strongly
 While recent studies have made progress on \emph{global} route planning for USVs by explicitly leveraging a known or forecasted current field~\cite{ref2,ref3,ref4}, far fewer works address the \emph{local}, sensor-driven navigation problem when the current is not provided \emph{a priori}.
 Motivated by real-world scenarios such as field competitions and fast-flowing river environments~\cite{ref5}, we study a local planning setting in which the vehicle must act using onboard perception, without advance knowledge of the flow field.
 Beyond unknown and time-varying currents, our environment further includes \emph{dynamic obstacles} (e.g., moving vessels or drifting objects), which increases outcome uncertainty and makes robustness to tail risks---rare but catastrophic safety violations---more critical.
-Fig.~\ref{fig:intro_overview} shows a representative dynamic-flow scenario: existing methods either fail to complete the task safely (DQN, PPO) or struggle with extreme inefficiency (APF, Bug). The proposed IQN-based planner reaches the goal both safely and efficiently.
+Fig.~\ref{fig:intro_overview} shows a representative dynamic-flow scenario: existing methods either fail to guarantee zero-collision safety (DQN) or leave residual collision risks (PPO), while classical planners (APF) struggle with efficiency. The proposed IQN-based planner reaches the goal both safely and efficiently.
 
 \begin{figure}[t]
   \centering
