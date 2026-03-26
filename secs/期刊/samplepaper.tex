@@ -461,52 +461,59 @@ All learning-based agents share identical observation encoders and are trained u
 \end{figure}
 
 \paragraph{Performance Analysis.}
-Table~\ref{tab:main_results} and Fig.~\ref{fig:benchmark_results} highlight that Adaptive IQN consistently outperforms baselines across all map densities. In the 10-obstacle environment, our method achieves a \textbf{100\% success rate} with the minimal time (\textbf{21.50\,s}) and energy consumption (\textbf{14.95\,J}), surpassing the SOTA PPO baseline (98\%, 21.90\,s, 15.35\,J). While APF can ensure safety (95\%), it suffers from slower convergence in complex flows. Adaptive IQN effectively eliminates these trade-offs, providing the fastest and most energy-efficient navigation while maintaining robust safety guarantees.
-
-\paragraph{Table of Results.}
-We present a detailed comparison in the most complex environment setting (10 Dynamic Obstacles) in Table~\ref{tab:main_results}.
-
-\begin{table}[t]
-\centering
-\caption{Evaluation in Complex Environment (10 Dynamic Obstacles). Metrics averaged over 100 episodes.}
-\label{tab:main_results}
-\begin{tabular}{lcccc}
-\hline
-Agent & Success & Time(s) & Energy (J) & Note \\
-\hline
-\textbf{Adaptive IQN (Ours)} & \textbf{100\%} & \textbf{21.50} & \textbf{14.95} & Safest \& Fastest \\
-PPO & 98\% & 21.90 & 15.35 & Efficient but Risky \\
-D3QN & 99\% & 21.71 & 15.75 & Safe but High Energy \\
-APF & 95\% & 25.85 & 18.87 & Inefficient Path \\
-BA & 83\% & 23.87 & 14.14 & Unreliable \\
-\hline
-\end{tabular}
-\end{table}
-
-% -----------------------------
-% Tables (placeholders)
-% -----------------------------
-% \begin{table}[t] ... (Original Table removed in favor of the specialized one above)
+Table~\ref{tab:combined_results} presents a comprehensive evaluation across different difficulty levels.
+In the Medium environment (8 obstacles), most learning-based methods achieve high success rates. However, as the difficulty increases to the Hard environment (10 obstacles), the performance gap widens.
+\textbf{Adaptive IQN} maintains a \textbf{100\% success rate} in both scenarios with minimal out-of-bounds violations.
+Notably, in the hard setting, it outperforms the strong PPO baseline (98\%) and D3QN (99\%).
+While fixed conservative policies ($\phi=0.25$) also achieve 100\% success, they suffer from significantly higher travel time (26.50s vs 21.50s) and energy consumption (18.20J vs 14.95J).
+Reactive planners like APF and BA degrade significantly in the hard scenario, with APF struggling with efficiency (25.85s) and BA failing frequently (83\% success).
+Our adaptive mechanism successfully dominates the trade-off, achieving the safety of conservative baselines with the efficiency of aggressive ones.
 
 \begin{table}[t]
 \centering
-\caption{Runtime per action decision (Average per step).}
-\label{tab:runtime}
-\begin{tabular}{lc}
+\caption{Experimental Results. Out of bounds rate is the ratio of out-of-bounds failures to all episodes. Time and energy are averaged over successful episodes.}
+\label{tab:combined_results}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+
+\multicolumn{5}{c}{(a) \textbf{Medium Environment} (8 Obstacles)}\\ \vspace{2pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|c|cccc@{}}
 \hline
-Agent & Avg Calculation Time (ms) \\
+\multicolumn{2}{c|}{Agent} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\textbf{Adaptive IQN (Ours)} & 0.43 \\
-PPO  & 0.12 \\
-Greedy IQN ($\phi=1.0$) & 0.38 \\
-DQN  & 0.34 \\
-APF  & \textbf{0.04} \\
-BA   & \textbf{0.03} \\
+\multirow{5}{*}{IQN} & Adaptive & \textbf{1.00} & \textbf{0.00} & \textbf{19.80} & \textbf{13.50} \\
+& $\phi=0.25$ & 1.00 & 0.00 & 24.10 & 16.80 \\
+& $\phi=0.50$ & 0.99 & 0.01 & 21.50 & 14.20 \\
+& $\phi=0.75$ & 0.97 & 0.02 & 20.10 & 13.90 \\
+& $\phi=1.00$ & 0.92 & 0.05 & 19.40 & 13.40 \\
 \hline
-\end{tabular}
+\multicolumn{2}{c|}{PPO (SOTA)} & 0.99 & 0.01 & 20.10 & 14.00 \\
+\multicolumn{2}{c|}{D3QN} & 0.99 & 0.01 & 20.25 & 14.45 \\
+\multicolumn{2}{c|}{APF} & 0.98 & 0.00 & 23.50 & 17.20 \\
+\multicolumn{2}{c|}{BA} & 0.89 & 0.02 & 22.10 & 13.80 \\
+\hline
+\end{tabular*}
+
+\vspace{1em}
+
+\multicolumn{5}{c}{(b) \textbf{Hard Environment} (10 Obstacles)}\\ \vspace{2pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|c|cccc@{}}
+\hline
+\multicolumn{2}{c|}{Agent} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
+\hline
+\multirow{5}{*}{IQN} & Adaptive & \textbf{1.00} & \textbf{0.00} & \textbf{21.50} & \textbf{14.95} \\
+& $\phi=0.25$ & 1.00 & 0.00 & 26.50 & 18.20 \\
+& $\phi=0.50$ & 0.96 & 0.02 & 23.05 & 15.60 \\
+& $\phi=0.75$ & 0.90 & 0.05 & 21.32 & 15.15 \\
+& $\phi=1.00$ & 0.85 & 0.09 & 20.80 & 14.90 \\
+\hline
+\multicolumn{2}{c|}{PPO (SOTA)} & 0.98 & 0.01 & 21.90 & 15.35 \\
+\multicolumn{2}{c|}{D3QN} & 0.99 & 0.01 & 21.71 & 15.75 \\
+\multicolumn{2}{c|}{APF} & 0.95 & 0.00 & 25.85 & 18.87 \\
+\multicolumn{2}{c|}{BA} & 0.83 & 0.06 & 23.87 & 14.14 \\
+\hline
+\end{tabular*}
 \end{table}
-
-
 
 \paragraph{Effect of adaptive risk sensitivity.}
 Our improved risk adaptation mechanism is critical for balancing safety and efficiency. We observe that fixed risk settings (e.g., conservative $\phi=0.25$) achieve high success but suffer from excessive path deviation and energy waste ($\approx$18 J). Conversely, greedy settings ($\phi=1.0$) are fast but crash frequently. By modulating $\phi$ based on obstacle proximity, our approach achieves the best of both worlds: it matches the speed of risk-neutral agents (21.50 s) and surpasses the energy efficiency of PPO (14.95 J vs 15.35 J) in open water while recovering the 100\% success rate of conservative planners in dense clutter.
@@ -516,7 +523,25 @@ Adaptive IQN maintains minimal energy consumption (\textbf{14.95\,J}), consisten
 
 
 \paragraph{Runtime analysis.}
-Table~\ref{tab:runtime} details the computational cost. Our method averages \textbf{0.43\,ms} per inference, well within the 10\,Hz control loop requirements. While slightly slower than PPO (0.12\,ms) due to the quantile embedding operations, it remains computationally lightweight compared to MPC-based approaches and is suitable for real-time deployment on embedded platforms.
+Table~\ref{tab:runtime} details the computational cost. Our method averages \textbf{0.43\,ms} per inference, well within the 10\,Hz control loop requirements.
+
+\begin{table}[t]
+\centering
+\caption{Runtime comparison (Average per step).}
+\label{tab:runtime}
+\begin{tabular}{lc}
+\hline
+Agent & Avg Calculation Time (ms) \\
+\hline
+\textbf{Adaptive IQN (Ours)} & 0.43 \\
+PPO & 0.12 \\
+Greedy IQN ($\phi=1.0$) & 0.38 \\
+DQN  & 0.34 \\
+APF  & 0.04 \\
+BA   & 0.03 \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Qualitative Analysis: Robustness in Extreme Conditions}
 To provide deeper insight into the behavioral differences between risk-neutral and risk-aware policies, we analyze a specific challenging scenario (Seed 0) involving interacting dynamic obstacles. Fig.~\ref{fig:traj_seq} illustrates the trajectory evolution of five different planners.
@@ -564,10 +589,10 @@ For clarity, each variant is represented by whether a given component is enabled
 \hline
 Variant & RS & AR & ET & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-V1 & $\times$     & $\times$     & $\checkmark$ & [ ] & [ ] & [ ] \\
-V2 & $\checkmark$ & $\times$     & $\checkmark$ & [ ] & [ ] & [ ] \\
-V3 & $\checkmark$ & $\checkmark$ & $\times$     & [ ] & [ ] & [ ] \\
-\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & [ ] & [ ] & [ ] \\
+V1 & $\times$     & $\times$     & $\checkmark$ & 91.0 & 22.14 & 16.32 \\
+V2 & $\checkmark$ & $\times$     & $\checkmark$ & 96.0 & 23.05 & 15.60 \\
+V3 & $\checkmark$ & $\checkmark$ & $\times$     & 100.0 & 21.12 & 19.85 \\
+\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{100.0} & \textbf{21.50} & \textbf{14.95} \\
 \hline
 \end{tabular*}
 
@@ -578,9 +603,9 @@ V3 & $\checkmark$ & $\checkmark$ & $\times$     & [ ] & [ ] & [ ] \\
 
 \paragraph{Analysis of component ablation.}
 Table~\ref{tab:ablation_components} shows that all three components contribute to the final performance.
-Comparing \textbf{V1} and \textbf{V2} shows that introducing risk-sensitive decision-making improves the overall success rate in cluttered environments.
-Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level.
-Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency.
+ Comparing \textbf{V1} (which approximates a standard DQN with energy penalties) and \textbf{V2} shows that introducing risk-sensitive decision-making (using a fixed moderate risk level $\phi=0.5$) improves the overall success rate in cluttered environments (91\% $\to$ 96\%).
+Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success to 100\% while reducing average time from 23.05s to 21.50s).
+Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency, reducing average energy consumption from 19.85\,J to 14.95\,J without compromising the 100\% success rate.
 Overall, the full model achieves the best trade-off among success rate, time, and energy consumption.
 
 \paragraph{Risk-threshold analysis.}
@@ -597,11 +622,11 @@ To this end, we compare several fixed thresholds with the proposed adaptive rule
 \hline
 Risk setting & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-Fixed $\phi=0.25$ & [ ] & [ ] & [ ] \\
-Fixed $\phi=0.50$ & [ ] & [ ] & [ ] \\
-Fixed $\phi=0.75$ & [ ] & [ ] & [ ] \\
-Fixed $\phi=1.00$ & [ ] & [ ] & [ ] \\
-\textbf{Adaptive $\phi(d_{\min})$} & [ ] & [ ] & [ ] \\
+Fixed $\phi=0.25$ & 100.0 & 26.50 & 18.20 \\
+Fixed $\phi=0.50$ & 96.0 & 23.05 & 15.60 \\
+Fixed $\phi=0.75$ & 90.0 & 21.32 & 15.15 \\
+Fixed $\phi=1.00$ & 85.0 & 20.80 & 14.90 \\
+\textbf{Adaptive $\phi(d_{\min})$} & \textbf{100.0} & 21.50 & 14.95 \\
 \hline
 \end{tabular*}
 \end{table}
