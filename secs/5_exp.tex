@@ -147,3 +147,23 @@ Adaptive IQN maintains minimal energy consumption (\textbf{14.95\,J}), consisten
 
 \paragraph{Runtime analysis.}
 Table~\ref{tab:runtime} details the computational cost. Our method averages \textbf{0.43\,ms} per inference, well within the 10\,Hz control loop requirements. While slightly slower than PPO (0.12\,ms) due to the quantile embedding operations, it remains computationally lightweight compared to MPC-based approaches and is suitable for real-time deployment on embedded platforms.
+
+\subsection{Qualitative Analysis: Robustness in Extreme Conditions}
+To provide deeper insight into the behavioral differences between risk-neutral and risk-aware policies, we analyze a specific challenging scenario (Seed 0) involving interacting dynamic obstacles. Fig.~\ref{fig:traj_seq} illustrates the trajectory evolution of five different planners.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/trajectory_sequence_refined_seed0.png}
+  \caption{Qualitative comparison of trajectory evolution in a complex dynamic environment (Seed 0).
+  (a) Start ($T=0.0$s): All agents initialize in a flow field with approaching dynamic obstacles.
+  (b) Early Stage ($T=12.0$s): The risk-neutral \textbf{PPO} agent (dashed blue) optimizes for expected return and fails to account for the worst-case movement of the dynamic obstacles, resulting in a collision.
+  (c) Late Stage ($T=25.0$s): The \textbf{Adaptive IQN} agent (solid red) proactively identifies the high-risk region and executes a wide evasive maneuver.
+  (d) Final ($T=38.0$s): Adaptive IQN successfully reaches the goal. In contrast, reactive planners like \textbf{APF} (dotted gray) get trapped in local minima due to the complex flow-obstacle interaction, failing to progress.}
+  \label{fig:traj_seq}
+\end{figure*}
+
+As shown in the time sequence, the environment presents a "trap" where the optimal path requires an early deviation to avoid oncoming obstacles. 
+The \textbf{PPO} agent, driving straight towards the goal to maximize instantaneous reward, collides at $T\approx11$s. This failure highlights the limitation of expectation-based optimization in dynamic environments—it underestimates the tail risk of rare collision events.
+In contrast, \textbf{Adaptive IQN} leverages its distributional value estimation. By assigning higher weight to the lower quantiles of the return distribution (representing collision risks), it "senses" the potential danger earlier and chooses a safer, albeit slightly longer, path around the obstacle cluster.
+Other baselines like \textbf{APF} survive but fail to reach the goal, getting stuck in a local minimum caused by the opposing flow and potential field repulsion. 
+This qualitative example demonstrates that our method effectively dominates the trade-off by being safer than PPO and more efficient than APF.
