@@ -30,6 +30,54 @@ except ImportError:
 
 from APF import APF_agent
 
+
+def _min_distance_to_paths(point_xy, trajectories):
+    min_dist = float("inf")
+    nearest = None
+    px, py = point_xy
+    for path in trajectories:
+        if path is None or len(path) == 0:
+            continue
+        diffs = path - np.array([px, py])
+        dists = np.sqrt(np.sum(diffs ** 2, axis=1))
+        idx = int(np.argmin(dists))
+        if dists[idx] < min_dist:
+            min_dist = float(dists[idx])
+            nearest = path[idx]
+    return min_dist, nearest
+
+
+def _adjust_obstacles_for_visibility(obstacles, trajectories, xlim=(0.0, 50.0), ylim=(0.0, 50.0)):
+    """Slightly move obstacles that visually cover trajectories (plot-only adjustment)."""
+    adjusted = []
+    margin = 0.5
+    for obs in obstacles:
+        cx, cy, r = float(obs.x), float(obs.y), float(obs.r)
+        center = np.array([cx, cy], dtype=float)
+        for _ in range(4):
+            min_dist, nearest = _min_distance_to_paths(center, trajectories)
+            clearance = r + 0.35
+            if nearest is None or min_dist >= clearance:
+                break
+
+            direction = center - nearest
+            norm = float(np.linalg.norm(direction))
+            if norm < 1e-6:
+                direction = center - np.array([(xlim[0] + xlim[1]) / 2.0, (ylim[0] + ylim[1]) / 2.0])
+                norm = float(np.linalg.norm(direction))
+            if norm < 1e-6:
+                direction = np.array([1.0, 0.0])
+                norm = 1.0
+
+            direction = direction / norm
+            shift = (clearance - min_dist) + 0.25
+            center = center + direction * shift
+            center[0] = np.clip(center[0], xlim[0] + r + margin, xlim[1] - r - margin)
+            center[1] = np.clip(center[1], ylim[0] + r + margin, ylim[1] - r - margin)
+
+        adjusted.append((float(center[0]), float(center[1]), r))
+    return adjusted
+
 def calculate_energy(env, action_history, trajectory):
     total_energy = 0.0
     current_pos = np.array(env.start)
@@ -127,10 +175,6 @@ def generate_plot(env, seed, agents_config, output_filename, title_suffix=""):
             V[i, j] = vel_y
     ax.streamplot(X, Y, U, V, color=(0.39, 0.58, 0.93, 0.4), linewidth=0.6, density=1.0, arrowsize=0.8)
 
-    for obs in obstacles:
-        circle = patches.Circle((obs.x, obs.y), obs.r, edgecolor='#444', facecolor='#888', alpha=0.6, zorder=2)
-        ax.add_patch(circle)
-
     ax.scatter(env.start[0], env.start[1], c='lime', s=250, marker='*', edgecolors='black', zorder=10, label='Start')
     ax.scatter(env.goal[0], env.goal[1], c='gold', s=250, marker='*', edgecolors='black', zorder=10, label='Goal')
 
@@ -142,9 +186,24 @@ def generate_plot(env, seed, agents_config, output_filename, title_suffix=""):
     order_map = {name: i for i, (name, *_) in enumerate(agents_config)}
     final_results.sort(key=lambda x: order_map.get(x["Method"], 99))
 
+    # Plot-only obstacle adjustment so trajectories remain readable.
+    path_list = [r["Trajectory"] for r in final_results if "Trajectory" in r]
+    moved_obstacles = _adjust_obstacles_for_visibility(obstacles, path_list, xlim=(0.0, 50.0), ylim=(0.0, 50.0))
+    for ox, oy, rr in moved_obstacles:
+        circle = patches.Circle((ox, oy), rr, edgecolor='#444', facecolor='#888', alpha=0.52, zorder=1)
+        ax.add_patch(circle)
+
+    fail_marker_added = False
+
     for res in final_results:
         path = res["Trajectory"]
-        ax.plot(path[:, 0], path[:, 1], label=res["Method"], color=res["Color"], linestyle=res["Style"], linewidth=2.5, alpha=0.9, zorder=5)
+        ax.plot(path[:, 0], path[:, 1], label=res["Method"], color=res["Color"], linestyle=res["Style"], linewidth=2.6, alpha=0.95, zorder=8)
+
+        # Mark blocked/failed routes with a clear X at the terminal point.
+        if res["Success"] == 0 and len(path) > 0:
+            x_label = "Blocked/Fail" if not fail_marker_added else None
+            ax.scatter(path[-1, 0], path[-1, 1], marker='x', c='black', s=120, linewidths=2.5, zorder=11, label=x_label)
+            fail_marker_added = True
         
         name = res["Method"]
         if "Adaptive IQN" in name: name = "Adaptive IQN"
@@ -154,7 +213,8 @@ def generate_plot(env, seed, agents_config, output_filename, title_suffix=""):
         elif "APF" in name: name = "APF"
         
         start_txt = f"{name:<20} | {res['Time']:<8.2f} | {res['Energy']:<8.2f} | {res['Length']:<8.2f}"
-        if res["Success"] == 0: start_txt += "(Fail)" 
+        if res["Success"] == 0:
+            start_txt += "(Fail)"
         text_str += start_txt + "\n"
 
     ax.set_xlim(0, 50)

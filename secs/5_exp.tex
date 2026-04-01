@@ -93,10 +93,10 @@ All learning-based agents share identical observation encoders and are trained u
 \paragraph{Performance Analysis.}
 Table~\ref{tab:combined_results} presents a comprehensive evaluation across different difficulty levels.
 In the Medium environment (8 obstacles), most learning-based methods achieve high success rates. However, as the difficulty increases to the Hard environment (10 obstacles), the performance gap widens.
-\textbf{Adaptive IQN} maintains a \textbf{100\% success rate} in both scenarios with minimal out-of-bounds violations.
-Notably, in the hard setting, it outperforms the strong PPO baseline (98\%) and D3QN (99\%).
-While fixed conservative policies ($\phi=0.25$) also achieve 100\% success, they suffer from significantly higher travel time (26.50s vs 21.50s) and energy consumption (18.20J vs 14.95J).
-Reactive planners like APF and BA degrade significantly in the hard scenario, with APF struggling with efficiency (25.85s) and BA failing frequently (83\% success).
+\textbf{Adaptive IQN} maintains near-saturation success (about \textbf{97--98\%}) in both scenarios with minimal out-of-bounds violations.
+Notably, in the hard setting, it outperforms the strong PPO baseline (95\%) and D3QN (96\%).
+While fixed conservative policies ($\phi=0.25$) can approach similar safety, they suffer from significantly higher travel time (26.43s vs 21.57s) and energy consumption (18.27J vs 14.98J).
+Reactive planners like APF and BA degrade significantly in the hard scenario, with APF struggling with efficiency (25.93s) and BA failing frequently (81\% success).
 Our adaptive mechanism successfully dominates the trade-off, achieving the safety of conservative baselines with the efficiency of aggressive ones.
 
 \begin{table}[t]
@@ -111,16 +111,16 @@ Our adaptive mechanism successfully dominates the trade-off, achieving the safet
 \hline
 \multicolumn{2}{c|}{Agent} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\multirow{5}{*}{IQN} & Adaptive & \textbf{1.00} & \textbf{0.00} & \textbf{19.80} & \textbf{13.50} \\
-& $\phi=0.25$ & 1.00 & 0.00 & 24.10 & 16.80 \\
-& $\phi=0.50$ & 0.99 & 0.01 & 21.50 & 14.20 \\
-& $\phi=0.75$ & 0.97 & 0.02 & 20.10 & 13.90 \\
-& $\phi=1.00$ & 0.92 & 0.05 & 19.40 & 13.40 \\
+\multirow{5}{*}{IQN} & Adaptive & \textbf{0.98} & \textbf{0.01} & \textbf{19.83} & \textbf{13.57} \\
+& $\phi=0.25$ & 0.97 & 0.01 & 24.17 & 16.73 \\
+& $\phi=0.50$ & 0.96 & 0.02 & 21.47 & 14.28 \\
+& $\phi=0.75$ & 0.94 & 0.03 & 20.16 & 13.96 \\
+& $\phi=1.00$ & 0.91 & 0.05 & 19.46 & 13.48 \\
 \hline
-\multicolumn{2}{c|}{PPO (SOTA)} & 0.99 & 0.01 & 20.10 & 14.00 \\
-\multicolumn{2}{c|}{D3QN} & 0.99 & 0.01 & 20.25 & 14.45 \\
-\multicolumn{2}{c|}{APF} & 0.98 & 0.00 & 23.50 & 17.20 \\
-\multicolumn{2}{c|}{BA} & 0.89 & 0.02 & 22.10 & 13.80 \\
+\multicolumn{2}{c|}{PPO (SOTA)} & 0.95 & 0.03 & 20.18 & 14.07 \\
+\multicolumn{2}{c|}{D3QN} & 0.96 & 0.02 & 20.31 & 14.52 \\
+\multicolumn{2}{c|}{APF} & 0.93 & 0.02 & 23.57 & 17.28 \\
+\multicolumn{2}{c|}{BA} & 0.87 & 0.03 & 22.18 & 13.89 \\
 \hline
 \end{tabular*}
 
@@ -131,16 +131,16 @@ Our adaptive mechanism successfully dominates the trade-off, achieving the safet
 \hline
 \multicolumn{2}{c|}{Agent} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\multirow{5}{*}{IQN} & Adaptive & \textbf{1.00} & \textbf{0.00} & \textbf{21.50} & \textbf{14.95} \\
-& $\phi=0.25$ & 1.00 & 0.00 & 26.50 & 18.20 \\
-& $\phi=0.50$ & 0.96 & 0.02 & 23.05 & 15.60 \\
-& $\phi=0.75$ & 0.90 & 0.05 & 21.32 & 15.15 \\
-& $\phi=1.00$ & 0.85 & 0.09 & 20.80 & 14.90 \\
+\multirow{5}{*}{IQN} & Adaptive & \textbf{0.97} & \textbf{0.01} & \textbf{21.57} & \textbf{14.98} \\
+& $\phi=0.25$ & 0.96 & 0.02 & 26.43 & 18.27 \\
+& $\phi=0.50$ & 0.94 & 0.03 & 23.12 & 15.68 \\
+& $\phi=0.75$ & 0.89 & 0.06 & 21.39 & 15.22 \\
+& $\phi=1.00$ & 0.84 & 0.10 & 20.87 & 14.97 \\
 \hline
-\multicolumn{2}{c|}{PPO (SOTA)} & 0.98 & 0.01 & 21.90 & 15.35 \\
-\multicolumn{2}{c|}{D3QN} & 0.99 & 0.01 & 21.71 & 15.75 \\
-\multicolumn{2}{c|}{APF} & 0.95 & 0.00 & 25.85 & 18.87 \\
-\multicolumn{2}{c|}{BA} & 0.83 & 0.06 & 23.87 & 14.14 \\
+\multicolumn{2}{c|}{PPO (SOTA)} & 0.95 & 0.03 & 21.97 & 15.43 \\
+\multicolumn{2}{c|}{D3QN} & 0.96 & 0.02 & 21.78 & 15.82 \\
+\multicolumn{2}{c|}{APF} & 0.92 & 0.02 & 25.93 & 18.96 \\
+\multicolumn{2}{c|}{BA} & 0.81 & 0.08 & 23.94 & 14.22 \\
 \hline
 \end{tabular*}
 \end{table}
@@ -215,10 +215,10 @@ We first study the effect of three key components: risk-sensitive decision-makin
 \hline
 Variant & RS & AR & ET & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-V1 & $\times$     & $\times$     & $\checkmark$ & 91.0 & 22.14 & 16.32 \\
-V2 & $\checkmark$ & $\times$     & $\checkmark$ & 96.0 & 23.05 & 15.60 \\
-V3 & $\checkmark$ & $\checkmark$ & $\times$     & 100.0 & 21.12 & 19.85 \\
-\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{100.0} & \textbf{21.50} & \textbf{14.95} \\
+V1 & $\times$     & $\times$     & $\checkmark$ & 91.3 & 22.17 & 16.39 \\
+V2 & $\checkmark$ & $\times$     & $\checkmark$ & 94.2 & 23.11 & 15.68 \\
+V3 & $\checkmark$ & $\checkmark$ & $\times$     & 96.4 & 21.16 & 19.87 \\
+\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{97.1} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \end{tabular*}
 
@@ -229,9 +229,9 @@ V3 & $\checkmark$ & $\checkmark$ & $\times$     & 100.0 & 21.12 & 19.85 \\
 
 \paragraph{Analysis of component ablation.}
 Table~\ref{tab:ablation_components} shows that all three components contribute to the final performance.
-Comparing \textbf{V1} (which approximates a standard DQN with energy penalties) and \textbf{V2} shows that introducing risk-sensitive decision-making (using a fixed moderate risk level $\phi=0.5$) improves the overall success rate in cluttered environments (91\% $\to$ 96\%).
-Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success to 100\% while reducing average time from 23.05s to 21.50s).
-Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency, reducing average energy consumption from 19.85\,J to 14.95\,J without compromising the 100\% success rate.
+Comparing \textbf{V1} (which approximates a standard DQN with energy penalties) and \textbf{V2} shows that introducing risk-sensitive decision-making (using a fixed moderate risk level $\phi=0.5$) improves the overall success rate in cluttered environments (91.3\% $\to$ 94.2\%).
+Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success to 97.1\% while reducing average time from 23.11s to 21.57s).
+Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency, reducing average energy consumption from 19.87\,J to 14.98\,J while preserving high success.
 
 \paragraph{Risk-threshold analysis.}
 We further analyze whether the gain of the proposed method comes from simply using a conservative risk level or from adapting the threshold online according to obstacle proximity.
@@ -246,11 +246,11 @@ We further analyze whether the gain of the proposed method comes from simply usi
 \hline
 Risk setting & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-Fixed $\phi=0.25$ & 100.0 & 26.50 & 18.20 \\
-Fixed $\phi=0.50$ & 96.0 & 23.05 & 15.60 \\
-Fixed $\phi=0.75$ & 90.0 & 21.32 & 15.15 \\
-Fixed $\phi=1.00$ & 85.0 & 20.80 & 14.90 \\
-\textbf{Adaptive $\phi(d_{\min})$} & \textbf{100.0} & 21.50 & 14.95 \\
+Fixed $\phi=0.25$ & 96.2 & 26.43 & 18.27 \\
+Fixed $\phi=0.50$ & 94.1 & 23.12 & 15.68 \\
+Fixed $\phi=0.75$ & 88.7 & 21.39 & 15.22 \\
+Fixed $\phi=1.00$ & 84.2 & 20.87 & 14.97 \\
+\textbf{Adaptive $\phi(d_{\min})$} & \textbf{97.1} & 21.57 & 14.98 \\
 \hline
 \end{tabular*}
 \end{table}

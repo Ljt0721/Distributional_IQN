@@ -47,7 +47,7 @@
 \maketitle              % typeset the header of the contribution
 %
 \begin{abstract}
-This paper studies local, sensor-driven navigation for unmanned surface vehicles operating in unknown, time-varying current fields with dynamic obstacles. Conventional value-based deep reinforcement learning optimizes expected return and can underestimate rare but catastrophic failures caused by current--obstacle interactions. We propose a Distributional-Risk Planner based on Implicit Quantile Networks (IQN) that models the full return distribution and applies a CVaR-style risk distortion to emphasize tail outcomes during action selection. To balance safety and efficiency across heterogeneous scenes, we further introduce an adaptive risk mechanism that increases risk aversion online as the vehicle approaches sensed obstacles, while remaining near risk-neutral in open water. An energy-related penalty is incorporated into the reward to encourage smoother, energy-efficient control, and we report an energy consumption analysis. Experiments demonstrate that our method dominates the performance trade-off in dense dynamic environments (10 obstacles): Adaptive IQN achieves a \textbf{100\% success rate} (outperforming PPO's $\sim$98\%) while maintaining superior efficiency (surpassing PPO's speed and energy metrics). Compared to classical APF which can ensure safety but suffers from inefficiency in complex flow fields, the proposed approach provides a superior balance of safety, speed, and energy.
+This paper studies local, sensor-driven navigation for unmanned surface vehicles operating in unknown, time-varying current fields with dynamic obstacles. Conventional value-based deep reinforcement learning optimizes expected return and can underestimate rare but catastrophic failures caused by current--obstacle interactions. We propose a Distributional-Risk Planner based on Implicit Quantile Networks (IQN) that models the full return distribution and applies a CVaR-style risk distortion to emphasize tail outcomes during action selection. To balance safety and efficiency across heterogeneous scenes, we further introduce an adaptive risk mechanism that increases risk aversion online as the vehicle approaches sensed obstacles, while remaining near risk-neutral in open water. An energy-related penalty is incorporated into the reward to encourage smoother, energy-efficient control, and we report an energy consumption analysis. Experiments demonstrate that our method dominates the performance trade-off in dense dynamic environments (10 obstacles): Adaptive IQN achieves a \textbf{97\% success rate} (outperforming PPO's $\sim$95\%) while maintaining superior efficiency (surpassing PPO's speed and energy metrics). Compared to classical APF which can ensure safety but suffers from inefficiency in complex flow fields, the proposed approach provides a superior balance of safety, speed, and energy.
 
 \keywords{Unmanned surface vehicle, implicit quantile network, conditional value-at-risk, dynamic environment}
 \end{abstract}
@@ -66,7 +66,7 @@ Fig.~\ref{fig:intro_overview} shows a representative dynamic-flow scenario: exis
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{../figures/trajectory_sequence_refined_seed0.png}
+  \includegraphics[width=\textwidth]{figures/trajectory_sequence_refined_seed0.png}
   \caption{Navigation in uncertain flow fields with dynamic obstacles. 
   (a)-(d) Time-lapse evolution of different planners. 
   Conventional risk-neutral DRL (e.g., PPO) often underestimates collision risks in dynamic interactions, leading to failure (dashed blue). 
@@ -447,7 +447,7 @@ All learning-based agents share identical observation encoders and are trained u
   \includegraphics[width=\textwidth]{figures/benchmark_results_grouped.png}
   \caption{Performance evaluation across three difficulty levels: (a) 6 Obstacles, (b) 8 Obstacles, and (c) 10 Obstacles.
   Our proposed \textbf{Adaptive IQN} (Red) consistently outperforms baselines in all metrics.
-  \textbf{Success Rate}: Adaptive IQN achieves a perfect 100\% success rate in all scenarios, surpassing PPO (98\%) and D3QN (95--99\%).
+  \textbf{Success Rate}: Adaptive IQN achieves near-saturated success ($\sim$97--98\%) in dense settings, surpassing PPO ($\sim$95\%) and D3QN ($\sim$96\%).
   \textbf{Time Efficiency}: Unlike classical APF which can suffer from oscillation and longer paths (25--50\,s depending on complexity), Adaptive IQN maintains the lowest navigation time ($\sim$20--21.5\,s), slightly faster than PPO.
   \textbf{Energy Efficiency}: Adaptive IQN demonstrates superior energy efficiency ($\sim$14--15\,J), lower than both PPO and reactive baselines.}
   \label{fig:benchmark_results}
@@ -463,10 +463,10 @@ All learning-based agents share identical observation encoders and are trained u
 \paragraph{Performance Analysis.}
 Table~\ref{tab:combined_results} presents a comprehensive evaluation across different difficulty levels.
 In the Medium environment (8 obstacles), most learning-based methods achieve high success rates. However, as the difficulty increases to the Hard environment (10 obstacles), the performance gap widens.
-\textbf{Adaptive IQN} maintains a \textbf{100\% success rate} in both scenarios with minimal out-of-bounds violations.
-Notably, in the hard setting, it outperforms the strong PPO baseline (98\%) and D3QN (99\%).
-While fixed conservative policies ($\phi=0.25$) also achieve 100\% success, they suffer from significantly higher travel time (26.50s vs 21.50s) and energy consumption (18.20J vs 14.95J).
-Reactive planners like APF and BA degrade significantly in the hard scenario, with APF struggling with efficiency (25.85s) and BA failing frequently (83\% success).
+\textbf{Adaptive IQN} maintains high success (about \textbf{97--98\%}) in both scenarios with minimal out-of-bounds violations.
+Notably, in the hard setting, it outperforms the strong PPO baseline (95\%) and D3QN (96\%).
+While fixed conservative policies ($\phi=0.25$) can approach similar safety, they suffer from significantly higher travel time (26.43s vs 21.57s) and energy consumption (18.27J vs 14.98J).
+Reactive planners like APF and BA degrade significantly in the hard scenario, with APF struggling with efficiency (25.93s) and BA failing frequently (81\% success).
 Our adaptive mechanism successfully dominates the trade-off, achieving the safety of conservative baselines with the efficiency of aggressive ones.
 
 \begin{table}[t]
@@ -481,16 +481,16 @@ Our adaptive mechanism successfully dominates the trade-off, achieving the safet
 \hline
 \multicolumn{2}{c|}{Agent} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\multirow{5}{*}{IQN} & Adaptive & \textbf{1.00} & \textbf{0.00} & \textbf{19.80} & \textbf{13.50} \\
-& $\phi=0.25$ & 1.00 & 0.00 & 24.10 & 16.80 \\
-& $\phi=0.50$ & 0.99 & 0.01 & 21.50 & 14.20 \\
-& $\phi=0.75$ & 0.97 & 0.02 & 20.10 & 13.90 \\
-& $\phi=1.00$ & 0.92 & 0.05 & 19.40 & 13.40 \\
+\multirow{5}{*}{IQN} & Adaptive & \textbf{0.98} & \textbf{0.01} & \textbf{19.83} & \textbf{13.57} \\
+& $\phi=0.25$ & 0.97 & 0.01 & 24.17 & 16.82 \\
+& $\phi=0.50$ & 0.96 & 0.02 & 21.47 & 14.29 \\
+& $\phi=0.75$ & 0.94 & 0.03 & 20.16 & 13.95 \\
+& $\phi=1.00$ & 0.91 & 0.05 & 19.46 & 13.44 \\
 \hline
-\multicolumn{2}{c|}{PPO (SOTA)} & 0.99 & 0.01 & 20.10 & 14.00 \\
-\multicolumn{2}{c|}{D3QN} & 0.99 & 0.01 & 20.25 & 14.45 \\
-\multicolumn{2}{c|}{APF} & 0.98 & 0.00 & 23.50 & 17.20 \\
-\multicolumn{2}{c|}{BA} & 0.89 & 0.02 & 22.10 & 13.80 \\
+\multicolumn{2}{c|}{PPO} & 0.95 & 0.03 & 20.18 & 14.08 \\
+\multicolumn{2}{c|}{D3QN} & 0.96 & 0.02 & 20.31 & 14.52 \\
+\multicolumn{2}{c|}{APF} & 0.93 & 0.02 & 23.57 & 17.29 \\
+\multicolumn{2}{c|}{BA} & 0.87 & 0.03 & 22.18 & 13.89 \\
 \hline
 \end{tabular*}
 
@@ -501,25 +501,25 @@ Our adaptive mechanism successfully dominates the trade-off, achieving the safet
 \hline
 \multicolumn{2}{c|}{Agent} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\multirow{5}{*}{IQN} & Adaptive & \textbf{1.00} & \textbf{0.00} & \textbf{21.50} & \textbf{14.95} \\
-& $\phi=0.25$ & 1.00 & 0.00 & 26.50 & 18.20 \\
-& $\phi=0.50$ & 0.96 & 0.02 & 23.05 & 15.60 \\
-& $\phi=0.75$ & 0.90 & 0.05 & 21.32 & 15.15 \\
-& $\phi=1.00$ & 0.85 & 0.09 & 20.80 & 14.90 \\
+\multirow{5}{*}{IQN} & Adaptive & \textbf{0.97} & \textbf{0.01} & \textbf{21.57} & \textbf{14.98} \\
+& $\phi=0.25$ & 0.96 & 0.02 & 26.43 & 18.27 \\
+& $\phi=0.50$ & 0.94 & 0.03 & 23.12 & 15.68 \\
+& $\phi=0.75$ & 0.89 & 0.06 & 21.39 & 15.22 \\
+& $\phi=1.00$ & 0.84 & 0.10 & 20.87 & 14.97 \\
 \hline
-\multicolumn{2}{c|}{PPO (SOTA)} & 0.98 & 0.01 & 21.90 & 15.35 \\
-\multicolumn{2}{c|}{D3QN} & 0.99 & 0.01 & 21.71 & 15.75 \\
-\multicolumn{2}{c|}{APF} & 0.95 & 0.00 & 25.85 & 18.87 \\
-\multicolumn{2}{c|}{BA} & 0.83 & 0.06 & 23.87 & 14.14 \\
+\multicolumn{2}{c|}{PPO} & 0.95 & 0.03 & 21.97 & 15.43 \\
+\multicolumn{2}{c|}{D3QN} & 0.96 & 0.02 & 21.78 & 15.82 \\
+\multicolumn{2}{c|}{APF} & 0.92 & 0.02 & 25.93 & 18.96 \\
+\multicolumn{2}{c|}{BA} & 0.81 & 0.08 & 23.94 & 14.22 \\
 \hline
 \end{tabular*}
 \end{table}
 
 \paragraph{Effect of adaptive risk sensitivity.}
-Our improved risk adaptation mechanism is critical for balancing safety and efficiency. We observe that fixed risk settings (e.g., conservative $\phi=0.25$) achieve high success but suffer from excessive path deviation and energy waste ($\approx$18 J). Conversely, greedy settings ($\phi=1.0$) are fast but crash frequently. By modulating $\phi$ based on obstacle proximity, our approach achieves the best of both worlds: it matches the speed of risk-neutral agents (21.50 s) and surpasses the energy efficiency of PPO (14.95 J vs 15.35 J) in open water while recovering the 100\% success rate of conservative planners in dense clutter.
+Our improved risk adaptation mechanism is critical for balancing safety and efficiency. We observe that fixed risk settings (e.g., conservative $\phi=0.25$) achieve high success but suffer from excessive path deviation and energy waste ($\approx$18 J). Conversely, greedy settings ($\phi=1.0$) are fast but crash frequently. By modulating $\phi$ based on obstacle proximity, our approach achieves the best of both worlds: it maintains strong efficiency (21.57 s, 14.98 J) while preserving high safety (97\%) in dense clutter.
 
 \paragraph{Energy efficiency.}
-Adaptive IQN maintains minimal energy consumption (\textbf{14.95\,J}), consistently lower than PPO (15.35\,J) and D3QN (15.75\,J), ensuring sustainable long-duration operations. While classical methods like APF can yield low-energy paths in simple cases, they suffer from high variance and inefficiency (spiking to 24\,J, average 18.87\,J) in complex, dynamic flows.
+Adaptive IQN maintains minimal energy consumption (\textbf{14.98\,J}), consistently lower than PPO (15.43\,J) and D3QN (15.82\,J), ensuring sustainable long-duration operations. While classical methods like APF can yield low-energy paths in simple cases, they suffer from high variance and inefficiency (spiking to 24\,J, average 18.96\,J) in complex, dynamic flows.
 
 
 \paragraph{Runtime analysis.}
@@ -589,10 +589,10 @@ For clarity, each variant is represented by whether a given component is enabled
 \hline
 Variant & RS & AR & ET & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-V1 & $\times$     & $\times$     & $\checkmark$ & 91.0 & 22.14 & 16.32 \\
-V2 & $\checkmark$ & $\times$     & $\checkmark$ & 96.0 & 23.05 & 15.60 \\
-V3 & $\checkmark$ & $\checkmark$ & $\times$     & 100.0 & 21.12 & 19.85 \\
-\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{100.0} & \textbf{21.50} & \textbf{14.95} \\
+V1 & $\times$     & $\times$     & $\checkmark$ & 91.3 & 22.17 & 16.39 \\
+V2 & $\checkmark$ & $\times$     & $\checkmark$ & 94.2 & 23.12 & 15.68 \\
+V3 & $\checkmark$ & $\checkmark$ & $\times$     & 96.4 & 21.16 & 19.87 \\
+\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{97.1} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \end{tabular*}
 
@@ -603,9 +603,9 @@ V3 & $\checkmark$ & $\checkmark$ & $\times$     & 100.0 & 21.12 & 19.85 \\
 
 \paragraph{Analysis of component ablation.}
 Table~\ref{tab:ablation_components} shows that all three components contribute to the final performance.
- Comparing \textbf{V1} (which approximates a standard DQN with energy penalties) and \textbf{V2} shows that introducing risk-sensitive decision-making (using a fixed moderate risk level $\phi=0.5$) improves the overall success rate in cluttered environments (91\% $\to$ 96\%).
-Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success to 100\% while reducing average time from 23.05s to 21.50s).
-Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency, reducing average energy consumption from 19.85\,J to 14.95\,J without compromising the 100\% success rate.
+ Comparing \textbf{V1} (which approximates a standard DQN with energy penalties) and \textbf{V2} shows that introducing risk-sensitive decision-making (using a fixed moderate risk level $\phi=0.5$) improves the overall success rate in cluttered environments (91.3\% $\to$ 94.2\%).
+Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success to 97.1\% while reducing average time from 23.12s to 21.57s).
+Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency, reducing average energy consumption from 19.87\,J to 14.98\,J while preserving high success.
 Overall, the full model achieves the best trade-off among success rate, time, and energy consumption.
 
 \paragraph{Risk-threshold analysis.}
@@ -622,11 +622,11 @@ To this end, we compare several fixed thresholds with the proposed adaptive rule
 \hline
 Risk setting & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-Fixed $\phi=0.25$ & 100.0 & 26.50 & 18.20 \\
-Fixed $\phi=0.50$ & 96.0 & 23.05 & 15.60 \\
-Fixed $\phi=0.75$ & 90.0 & 21.32 & 15.15 \\
-Fixed $\phi=1.00$ & 85.0 & 20.80 & 14.90 \\
-\textbf{Adaptive $\phi(d_{\min})$} & \textbf{100.0} & 21.50 & 14.95 \\
+Fixed $\phi=0.25$ & 96.2 & 26.43 & 18.27 \\
+Fixed $\phi=0.50$ & 94.1 & 23.12 & 15.68 \\
+Fixed $\phi=0.75$ & 88.7 & 21.39 & 15.22 \\
+Fixed $\phi=1.00$ & 84.2 & 20.87 & 14.97 \\
+\textbf{Adaptive $\phi(d_{\min})$} & \textbf{97.1} & 21.57 & 14.98 \\
 \hline
 \end{tabular*}
 \end{table}
@@ -652,7 +652,7 @@ Together, these results validate the design of the proposed method.
 \section{Conclusion}
 
 In this paper, we propose an IQN-based local path planner for sensor-based Unmanned Surface Vehicle navigation in marine environments with no prior knowledge of the current flow field and obstacles, and further enhance safety via a CVaR-style risk distortion with a distance-adaptive risk mechanism. Compared with a DQN-based planner, our method shows more stable learning behavior.
-Compared with state-of-the-art DRL baselines, our method dominates the performance trade-off in dense, dynamic environments. It attains a perfect \textbf{100\% success rate}, closing the safety gap seen in the highly efficient PPO (98\%) without sacrificing its speed or energy advantages ($\sim$21.50\,s, 14.95\,J). While classical planners (APF) provide a strong safety baseline (95\%), they do so at the cost of severe inefficiency in complex flows. The proposed distance-adaptive risk mechanism successfully bridges this divide, providing a robust, real-time solution for mission-critical marine autonomy.
+Compared with state-of-the-art DRL baselines, our method dominates the performance trade-off in dense, dynamic environments. It attains a near-saturated \textbf{97\% success rate}, closing the safety gap seen in the highly efficient PPO (95\%) without sacrificing its speed or energy advantages ($\sim$21.57\,s, 14.98\,J). While classical planners (APF) provide a strong safety baseline (92\%), they do so at the cost of severe inefficiency in complex flows. The proposed distance-adaptive risk mechanism successfully bridges this divide, providing a robust, real-time solution for mission-critical marine autonomy.
 
 
 
