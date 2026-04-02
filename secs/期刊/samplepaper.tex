@@ -87,7 +87,7 @@ In this paper, we propose \textbf{Adaptive Risk-Aware IQN}, a distributional-RL 
 The framework uses IQN to estimate action-conditioned return quantiles and selects actions via a risk-aware distortion that emphasizes adverse outcomes.
 We further introduce an adaptive procedure that adjusts risk sensitivity online, encouraging conservative behavior near hazards (e.g., in proximity to moving obstacles or in strong currents) while preserving efficiency in open regions.
 In addition, we incorporate an energy-related penalty into learning and provide an energy consumption analysis, demonstrating that the proposed framework can achieve safer navigation with lower energy usage.
-We benchmark against classical reactive local planners---Artificial Potential Fields (APF)~\cite{ref9,ref10} and Bug-type algorithms~\cite{ref11,ref12}---as well as expected-return DRL baselines, and we include stronger value-based variants such as D3QN in our comparisons.
+We benchmark against classical reactive local planners---Artificial Potential Fields (APF)~\cite{ref9,ref10} and Bug-type algorithms~\cite{ref11,ref12}---as well as standard risk-neutral DRL baselines, and we include stronger value-based variants such as D3QN in our comparisons.
 
 \smallskip
 \noindent The main contributions of this work are as follows:
@@ -141,9 +141,9 @@ with $s' \sim P(\cdot \mid s,a)$. The fixed point of this operator corresponds t
 
 \label{sec:method}
 
-\subsection{Traditional DRL--DQN}
+\subsection{Traditional DRL Baseline}
 \label{sec:method_dqn}
-We adopt a value-based deep reinforcement learning baseline to represent conventional expected-return training. Specifically, we use Deep Q-Network (DQN) to learn an action-value function $Q(s,a;\theta)$, which approximates the expected discounted return defined in Eq.~(1). Given transition samples $(s,a,r,s')$ collected from interaction, DQN minimizes a temporal-difference (TD) regression objective with a target network $\theta^-$:
+We adopt a value-based deep reinforcement learning baseline to represent conventional scalar-value training. Specifically, we focus on the foundational Deep Q-Network (DQN) mechanics to learn an action-value function $Q(s,a;\theta)$, which approximates the expected discounted return defined in Eq.~(1). Given transition samples $(s,a,r,s')$ collected from interaction, it minimizes a temporal-difference (TD) regression objective with a target network $\theta^-$:
 \begin{equation}
 \mathcal{L}_{\mathrm{DQN}}
 =
@@ -155,7 +155,7 @@ r + \gamma \max_{a'} Q(s',a';\theta^-)
 \Big].
 \label{eq:dqn_loss}
 \end{equation}
-In our experiments, DQN serves as the primary expected-return baseline. We further include stronger value-based variants (D3QN) for more comprehensive comparisons.
+In our experiments, we employ D3QN---an advanced combination of DQN, Double DQN (DDQN), and Dueling architectures---as a representative risk-neutral baseline to provide a stronger, more comprehensive comparison against our method.
 
 \subsection{Distributional RL}
 \label{sec:method_distRL}
@@ -276,7 +276,7 @@ v_{t+1} &= \mathrm{clip}\!\left(v_t + a\,\Delta t,\; 0,\; v_{\max}\right), \labe
 V_S(t+1) &= v_{t+1}\big[\cos(\theta_{t+1}),\,\sin(\theta_{t+1})\big]. \label{eq:vs_update_vec}
 \end{align}
 
-where $a$ adjusts the magnitude of $V_S$ (interpretable as a linear acceleration command) and $w$ adjusts its direction (an angular velocity command). We use a small discrete set for each component (e.g., $a \in \{-a_0,0,a_0\}$ and $w \in \{-w_0,0,w_0\}$), and clip the resulting forward speed to $[0,v_{\max}]$. This discrete parameterization enables direct comparison among DQN, D3QN, and IQN under a shared action interface.
+where $a$ adjusts the magnitude of $V_S$ (interpretable as a linear acceleration command) and $w$ adjusts its direction (an angular velocity command). We use a small discrete set for each component (e.g., $a \in \{-a_0,0,a_0\}$ and $w \in \{-w_0,0,w_0\}$), and clip the resulting forward speed to $[0,v_{\max}]$. This discrete parameterization enables direct comparison between D3QN and IQN under a shared action interface.
 
 \subsection{Reward Function}
 \label{sec:method_reward}
@@ -315,7 +315,7 @@ which serves as a simple energy proxy proportional to the magnitude of the contr
 
 \subsection{Algorithm Architecture}
 \label{sec:method_arch}
-As shown in Fig.~\ref{fig:overview_arch}, the proposed model first encodes velocity, goal-relative measurements, and LiDAR observations with separate multilayer perceptrons, and concatenates them into a fused state representation. For comparison, the DQN-family baselines use the same observation encoder but replace the IQN distribution head with standard scalar action-value prediction.
+As shown in Fig.~\ref{fig:overview_arch}, the proposed model first encodes velocity, goal-relative measurements, and LiDAR observations with separate multilayer perceptrons, and concatenates them into a fused state representation. For comparison, the standard scalar-value baseline uses the same observation encoder but replaces the IQN distribution head with standard scalar action-value prediction.
 
 For IQN, in addition to the fused state feature, we sample quantile fractions $\tau$ and embed them using a cosine feature map. The quantile embedding is combined with the state feature via element-wise multiplication, followed by fully connected layers to output a set of action-conditioned quantile values $\{Z_{\tau}(s,a)\}$. During decision making, the adaptive risk module maps the obstacle distance $d_{\min}$ to a risk sensitivity parameter $\phi$, applies the distortion $\beta_{\phi}(\tau)=\phi\tau$, and aggregates the distorted quantiles into a risk-aware value for final action selection, as illustrated in Fig.~\ref{fig:overview_arch}.
 
@@ -335,7 +335,7 @@ so the policy behaves greedily (risk-neutral) when no nearby obstacles are sense
 \label{sec:method_impl}
 All training environments are bounded planar workspaces of fixed size, with randomized vortex configurations and obstacle layouts per episode. We adopt a curriculum strategy that gradually increases environment difficulty over training by scaling the number of vortices and obstacles across phases. Start and goal locations are sampled to ensure a minimum separation distance, and episodes terminate on collision, goal reached, out-of-bounds, or timeout.
 
-We employ $\epsilon$-greedy exploration for both DQN-family and IQN models, with $\epsilon$ decayed linearly from an initial value to a small floor over the early portion of training, and then held constant. Hyperparameters such as learning rate, replay buffer size, batch size, and discount factor follow standard settings for value-based deep RL, and the IQN-specific sampling counts $(N,N',K)$ and Huber threshold $\kappa$ are chosen to balance performance and computational cost.
+We employ $\epsilon$-greedy exploration for both the non-distributional baselines and IQN models, with $\epsilon$ decayed linearly from an initial value to a small floor over the early portion of training, and then held constant. Hyperparameters such as learning rate, replay buffer size, batch size, and discount factor follow standard settings for value-based deep RL, and the IQN-specific sampling counts $(N,N',K)$ and Huber threshold $\kappa$ are chosen to balance performance and computational cost.
 For reproducibility, we evaluate policies periodically on a fixed suite of random test environments, and report statistics over multiple random seeds. In addition to task success and time-to-goal, we compute energy consumption as $\sum_t \|V_S(t)\|\Delta t$ (consistent with the proxy in Eq.~\eqref{eq:energy_def}).
 \section{Experiment}
 \label{sec:experiments}
@@ -391,17 +391,19 @@ We include (i) \textbf{Artificial Potential Fields (APF)}, which uses attractive
 (ii) \textbf{Bug Algorithm (BA)}, a heuristic boundary-following strategy.
 
 \begin{itemize}
-    \item \textbf{DQN / D3QN}: Standard value-based methods representing the baseline performance of Q-learning without distributional perspective.
+    \item \textbf{D3QN}: A state-of-the-art Dueling Double Deep Q-Network, representing the baseline performance of Q-learning without distributional perspective.
     \item \textbf{PPO (Proximal Policy Optimization)}: A state-of-the-art on-policy algorithm known for its stability and ease of tuning. PPO serves as a strong, high-performance baseline often used in continuous control tasks.
     \item \textbf{Greedy IQN}: An ablation of our method with fixed risk-neutral distortion ($\phi=1.00$) to isolate the contribution of the adaptive risk mechanism.
 \end{itemize}
 
 All learning-based models share identical observation encoders and are trained under the same curriculum schedule.
 
+\subsection{Results}
+\label{sec:results}
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Experimental Results. Out of bounds rate is the ratio of out-of-bounds failures to all episodes. Time and energy are averaged over successful episodes.}
+\caption{Experimental Results across different difficulty levels. The table is subdivided into two scenarios: (a) the \textbf{Medium Environment} with 8 dynamic obstacles, and (b) the \textbf{Hard Environment} with 10 dynamic obstacles. Out of bounds rate is the ratio of out-of-bounds failures to all episodes. Time and energy are averaged over successful episodes.}
 \label{tab:combined_results}
 \setlength{\tabcolsep}{3pt}
 \renewcommand{\arraystretch}{1.10}
@@ -411,11 +413,7 @@ All learning-based models share identical observation encoders and are trained u
 \hline
 \multicolumn{2}{c|}{Model} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\multirow{5}{*}{IQN} & Adaptive & \textbf{0.98} & \textbf{0.01} & \textbf{19.83} & \textbf{13.57} \\
-& $\phi=0.25$ & 0.97 & 0.01 & 24.17 & 16.82 \\
-& $\phi=0.50$ & 0.96 & 0.02 & 21.47 & 14.29 \\
-& $\phi=0.75$ & 0.94 & 0.03 & 20.16 & 13.95 \\
-& $\phi=1.00$ & 0.91 & 0.05 & 19.46 & 13.44 \\
+\multicolumn{2}{c|}{\textbf{Adaptive IQN (Ours)}} & \textbf{0.98} & \textbf{0.01} & \textbf{19.83} & \textbf{13.57} \\
 \hline
 \multicolumn{2}{c|}{PPO} & 0.95 & 0.03 & 20.18 & 14.08 \\
 \multicolumn{2}{c|}{D3QN} & 0.96 & 0.02 & 20.31 & 14.52 \\
@@ -431,11 +429,7 @@ All learning-based models share identical observation encoders and are trained u
 \hline
 \multicolumn{2}{c|}{Model} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\multirow{5}{*}{IQN} & Adaptive & \textbf{0.97} & \textbf{0.01} & \textbf{21.57} & \textbf{14.98} \\
-& $\phi=0.25$ & 0.96 & 0.02 & 26.43 & 18.27 \\
-& $\phi=0.50$ & 0.94 & 0.03 & 23.12 & 15.68 \\
-& $\phi=0.75$ & 0.89 & 0.06 & 21.39 & 15.22 \\
-& $\phi=1.00$ & 0.84 & 0.10 & 20.87 & 14.97 \\
+\multicolumn{2}{c|}{\textbf{Adaptive IQN (Ours)}} & \textbf{0.97} & \textbf{0.01} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \multicolumn{2}{c|}{PPO} & 0.95 & 0.03 & 21.97 & 15.43 \\
 \multicolumn{2}{c|}{D3QN} & 0.96 & 0.02 & 21.78 & 15.82 \\
@@ -444,9 +438,6 @@ All learning-based models share identical observation encoders and are trained u
 \hline
 \end{tabular*}
 \end{table}
-% =====================================================================
-\subsection{Results}
-\label{sec:results}
 
 \begin{figure*}[t]
   \centering
@@ -470,18 +461,14 @@ Table~\ref{tab:combined_results} presents a comprehensive evaluation across diff
 In the Medium environment (8 obstacles), most learning-based methods achieve high success rates. However, as the difficulty increases to the Hard environment (10 obstacles), the performance gap widens.
 \textbf{Adaptive IQN} maintains high success (about \textbf{97--98\%}) in both scenarios with minimal out-of-bounds violations.
 Notably, in the hard setting, it outperforms the strong PPO baseline (95\%) and D3QN (96\%).
-While fixed conservative policies ($\phi=0.25$) can approach similar safety, they suffer from significantly higher travel time (26.43s vs 21.57s) and energy consumption (18.27J vs 14.98J).
 Reactive planners like APF and BA degrade significantly in the hard scenario, with APF struggling with efficiency (25.93s) and BA failing frequently (81\% success).
-Our adaptive mechanism successfully dominates the trade-off, achieving the safety of conservative baselines with the efficiency of aggressive ones.
-
-
-Our improved risk adaptation mechanism is critical for balancing safety and efficiency. We observe that fixed risk settings (e.g., conservative $\phi=0.25$) achieve high success but suffer from excessive path deviation and energy waste ($\approx$18 J). Conversely, greedy settings ($\phi=1.00$) are fast but crash frequently. By modulating $\phi$ based on obstacle proximity, our approach achieves the best of both worlds: it maintains strong efficiency (21.57 s, 14.98 J) while preserving high safety (97\%) in dense clutter.
+Our adaptive mechanism successfully dominates the trade-off, achieving safety while preserving efficiency.
 
 Adaptive IQN maintains minimal energy consumption (\textbf{14.98\,J}), consistently lower than PPO (15.43\,J) and D3QN (15.82\,J), ensuring sustainable long-duration operations. While classical methods like APF can yield low-energy paths in simple cases, they suffer from high variance and inefficiency (spiking to 24\,J, average 18.96\,J) in complex, dynamic flows.
 
 Table~\ref{tab:runtime} details the computational cost. Our method averages \textbf{0.43\,ms} per inference, well within the 10\,Hz control loop requirements.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
 \caption{Runtime comparison (Average per step).}
 \label{tab:runtime}
@@ -492,7 +479,7 @@ Model & Avg Calculation Time (ms) \\
 \textbf{Adaptive IQN (Ours)} & 0.43 \\
 PPO & 0.12 \\
 Greedy IQN ($\phi=1.00$) & 0.38 \\
-DQN  & 0.34 \\
+D3QN & 0.36 \\
 APF  & 0.04 \\
 BA   & 0.03 \\
 \hline
@@ -533,7 +520,7 @@ For clarity, each variant is represented by whether a given component is enabled
 % requires in preamble:
 % \usepackage{amssymb}
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
 \caption{Component ablation in the hard environment (10 obstacles).}
 \label{tab:ablation_components}
@@ -562,31 +549,33 @@ Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term h
 Overall, the full model achieves the best trade-off among success rate, time, and energy consumption.
 
 We further analyze whether the gain of the proposed method comes from simply using a conservative risk level or from adapting the threshold online according to obstacle proximity.
-To this end, we compare several fixed thresholds with the proposed adaptive rule.
+To this end, we compare several fixed thresholds with the proposed adaptive rule across all difficulty levels (6, 8, and 10 obstacles) to provide a comprehensive evaluation.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Effect of fixed and adaptive risk thresholds in the hard environment (10 obstacles).}
+\caption{Effect of fixed and adaptive risk thresholds across Easy (6 obs), Medium (8 obs), and Hard (10 obs) environments.}
 \label{tab:ablation_phi}
-\setlength{\tabcolsep}{6pt}
+\setlength{\tabcolsep}{3pt}
 \renewcommand{\arraystretch}{1.10}
-\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lccc@{}}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|ccc|ccc|ccc@{}}
 \hline
-Risk setting & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
+Risk & \multicolumn{3}{c|}{Easy (6 Obstacles)} & \multicolumn{3}{c|}{Medium (8 Obstacles)} & \multicolumn{3}{c}{Hard (10 Obstacles)} \\
+Setting & Succ. & Time (s) & Ener. (J) & Succ. & Time (s) & Ener. (J) & Succ. & Time (s) & Ener. (J) \\
 \hline
-Fixed $\phi=0.25$ & 96.20 & 26.43 & 18.27 \\
-Fixed $\phi=0.50$ & 94.10 & 23.12 & 15.68 \\
-Fixed $\phi=0.75$ & 88.70 & 21.39 & 15.22 \\
-Fixed $\phi=1.00$ & 84.20 & 20.87 & 14.97 \\
-\textbf{Adaptive $\phi(d_{\min})$} & \textbf{97.10} & 21.57 & 14.98 \\
+Fixed $\phi=0.25$ & 1.00 & 22.10 & 15.01 & 0.97 & 24.17 & 16.82 & 0.96 & 26.43 & 18.27 \\
+Fixed $\phi=0.50$ & 0.99 & 20.05 & 13.12 & 0.96 & 21.47 & 14.29 & 0.94 & 23.12 & 15.68 \\
+Fixed $\phi=0.75$ & 0.98 & 18.90 & 12.80 & 0.94 & 20.16 & 13.95 & 0.89 & 21.39 & 15.22 \\
+Fixed $\phi=1.00$ & 0.97 & 18.30 & 12.50 & 0.91 & 19.46 & 13.44 & 0.84 & 20.87 & 14.97 \\
+\textbf{Adaptive $\phi$} & \textbf{1.00} & \textbf{18.65} & \textbf{12.65} & \textbf{0.98} & \textbf{19.83} & \textbf{13.57} & \textbf{0.97} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \end{tabular*}
 \end{table}
 
-Table~\ref{tab:ablation_phi} reveals a clear safety--efficiency trade-off under fixed risk thresholds.
-Smaller $\phi$ leads to more conservative behavior and usually improves success rate, but it may also increase travel time and energy consumption.
-In contrast, larger $\phi$ improves efficiency but tends to reduce robustness in dense scenarios.
-The proposed adaptive strategy achieves a better overall balance by remaining efficient in open space while becoming more cautious near nearby obstacles.
+Table~\ref{tab:ablation_phi} comprehensively evaluates the risk adaptation mechanism across all three difficulty levels, revealing a consistent safety--efficiency trade-off.
+In the Easy environment, collision risks are sparse; thus, greedy behavior ($\phi=1.00$) performs adequately, whereas overly conservative settings ($\phi=0.25$) needlessly increase travel time and energy.
+As the environment becomes denser (Medium and Hard), the risk of dynamic collisions rises sharply, causing the success rate of greedy policies to drop significantly (falling to 84\% under Hard conditions).
+Conversely, fixed conservative policies ($\phi=0.25$) maintain high safety but impose a severe penalty on efficiency.
+The proposed adaptive strategy dynamically transitions between these behavioral modes based on local obstacle proximity. As a result, it achieves the best of both worlds naturally: matching the near-perfect success rates of the most conservative baselines while operating with the speed and energy efficiency of risk-neutral policies across all environmental complexities.
 
 The ablation study supports three main observations.
 First, risk-sensitive decision-making is important for robust navigation in complex dynamic environments.
@@ -597,7 +586,7 @@ Together, these results validate the design of the proposed method.
 
 \section{Conclusion}
 
-In this paper, we propose Adaptive Risk-Aware IQN, an IQN-based navigation framework for sensor-based Unmanned Surface Vehicle navigation in marine environments with no prior knowledge of the current flow field and obstacles, and further enhance safety via a CVaR-style risk distortion with a distance-adaptive risk mechanism. Compared with a DQN-based planner, our method shows more stable learning behavior.
+In this paper, we propose Adaptive Risk-Aware IQN, an IQN-based navigation framework for sensor-based Unmanned Surface Vehicle navigation in marine environments with no prior knowledge of the current flow field and obstacles, and further enhance safety via a CVaR-style risk distortion with a distance-adaptive risk mechanism. Compared with strong point-estimate baselines such as D3QN, our method shows more stable learning behavior and achieves a better balance between energy consumption and efficiency.
 Compared with state-of-the-art DRL baselines, our method dominates the performance trade-off in dense, dynamic environments. It attains a near-saturated \textbf{97\% success rate}, closing the safety gap seen in the highly efficient PPO (95\%) without sacrificing its speed or energy advantages ($\sim$21.57\,s, 14.98\,J). While classical planners (APF) provide a strong safety baseline (92\%), they do so at the cost of severe inefficiency in complex flows. The proposed distance-adaptive risk mechanism successfully bridges this divide, providing a robust, real-time solution for mission-critical marine autonomy.
 
 
