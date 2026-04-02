@@ -555,18 +555,49 @@ To this end, we compare several fixed thresholds with the proposed adaptive rule
 \centering
 \caption{Effect of fixed and adaptive risk thresholds across Easy (6 obs), Medium (8 obs), and Hard (10 obs) environments.}
 \label{tab:ablation_phi}
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{6pt}
 \renewcommand{\arraystretch}{1.10}
-\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|ccc|ccc|ccc@{}}
+
+\multicolumn{4}{c}{(a) \textbf{Easy Environment} (6 Obstacles)}\\ \vspace{2pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|ccc@{}}
 \hline
-Risk & \multicolumn{3}{c|}{Easy (6 Obstacles)} & \multicolumn{3}{c|}{Medium (8 Obstacles)} & \multicolumn{3}{c}{Hard (10 Obstacles)} \\
-Setting & Succ. & Time (s) & Ener. (J) & Succ. & Time (s) & Ener. (J) & Succ. & Time (s) & Ener. (J) \\
+Risk Setting & Succ. (\%) $\uparrow$ & Time (s) $\downarrow$ & Ener. (J) $\downarrow$ \\
 \hline
-Fixed $\phi=0.25$ & 1.00 & 22.10 & 15.01 & 0.97 & 24.17 & 16.82 & 0.96 & 26.43 & 18.27 \\
-Fixed $\phi=0.50$ & 0.99 & 20.05 & 13.12 & 0.96 & 21.47 & 14.29 & 0.94 & 23.12 & 15.68 \\
-Fixed $\phi=0.75$ & 0.98 & 18.90 & 12.80 & 0.94 & 20.16 & 13.95 & 0.89 & 21.39 & 15.22 \\
-Fixed $\phi=1.00$ & 0.97 & 18.30 & 12.50 & 0.91 & 19.46 & 13.44 & 0.84 & 20.87 & 14.97 \\
-\textbf{Adaptive $\phi$} & \textbf{1.00} & \textbf{18.65} & \textbf{12.65} & \textbf{0.98} & \textbf{19.83} & \textbf{13.57} & \textbf{0.97} & \textbf{21.57} & \textbf{14.98} \\
+Fixed $\phi=0.25$ & 100 & 22.10 & 15.01 \\
+Fixed $\phi=0.50$ & 99 & 20.05 & 13.12 \\
+Fixed $\phi=0.75$ & 98 & 18.90 & 12.80 \\
+Fixed $\phi=1.00$ & 97 & 18.30 & 12.50 \\
+\textbf{Adaptive $\phi$} & \textbf{100} & \textbf{18.65} & \textbf{12.65} \\
+\hline
+\end{tabular*}
+
+\vspace{1em}
+
+\multicolumn{4}{c}{(b) \textbf{Medium Environment} (8 Obstacles)}\\ \vspace{2pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|ccc@{}}
+\hline
+Risk Setting & Succ. (\%) $\uparrow$ & Time (s) $\downarrow$ & Ener. (J) $\downarrow$ \\
+\hline
+Fixed $\phi=0.25$ & 97 & 24.17 & 16.82 \\
+Fixed $\phi=0.50$ & 96 & 21.47 & 14.29 \\
+Fixed $\phi=0.75$ & 94 & 20.16 & 13.95 \\
+Fixed $\phi=1.00$ & 91 & 19.46 & 13.44 \\
+\textbf{Adaptive $\phi$} & \textbf{98} & \textbf{19.83} & \textbf{13.57} \\
+\hline
+\end{tabular*}
+
+\vspace{1em}
+
+\multicolumn{4}{c}{(c) \textbf{Hard Environment} (10 Obstacles)}\\ \vspace{2pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|ccc@{}}
+\hline
+Risk Setting & Succ. (\%) $\uparrow$ & Time (s) $\downarrow$ & Ener. (J) $\downarrow$ \\
+\hline
+Fixed $\phi=0.25$ & 96 & 26.43 & 18.27 \\
+Fixed $\phi=0.50$ & 94 & 23.12 & 15.68 \\
+Fixed $\phi=0.75$ & 89 & 21.39 & 15.22 \\
+Fixed $\phi=1.00$ & 84 & 20.87 & 14.97 \\
+\textbf{Adaptive $\phi$} & \textbf{97} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \end{tabular*}
 \end{table}
