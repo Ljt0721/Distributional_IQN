@@ -110,7 +110,6 @@ def plot_training_curves():
         "Adaptive IQN": '#d62728', # Red
         "PPO": '#2ca02c',         # Green
         "D3QN": '#1f77b4',        # Blue
-        "Rainbow": '#9467bd',     # Purple
         "DQN": '#8c564b'          # Brown
     }
 
@@ -233,10 +232,7 @@ def plot_training_curves():
     plot_npz("pretrained_models/D3QN/seed_42/evaluations.npz", "D3QN (Eval)", colors["D3QN"])
     # Skip the broken D3QN CSV
     
-    # --- 4. Load Rainbow Data ---
-    plot_npz("pretrained_models/Rainbow/seed_42/evaluations.npz", "Rainbow", colors["Rainbow"])
-
-    # --- 5. Hard Variants (If interesting) ---
+    # --- 4. Hard Variants (If interesting) ---
     plot_npz("pretrained_models/Hard_PPO/seed_42/evaluations.npz", "PPO (Hard)", colors["PPO"])
     plot_npz("pretrained_models/Hard_D3QN/seed_42/evaluations.npz", "D3QN (Hard)", colors["D3QN"])
     

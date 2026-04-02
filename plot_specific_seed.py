@@ -2,6 +2,10 @@ import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
+
 import matplotlib.patches as patches
 import torch
 import marinenav_env.envs.marinenav_env as marinenav_env
@@ -108,7 +112,7 @@ def run_single_episode(env, agent, type_):
             action = res[0]
         elif type_ == "ppo":
             action, _ = agent.predict(obs, deterministic=True)
-        elif type_ == "d3qn" or type_ == "rainbow":
+        elif type_ == "d3qn":
             action, _ = agent.predict(obs, deterministic=True)
         elif type_ == "apf":
             action = agent.act(obs)
@@ -209,7 +213,7 @@ def generate_plot(env, seed, agents_config, output_filename, title_suffix=""):
         if "Adaptive IQN" in name: name = "Adaptive IQN"
         elif "PPO" in name: name = "PPO"
         elif "D3QN" in name: name = "D3QN"
-        elif "Rainbow" in name: name = "Rainbow"
+
         elif "APF" in name: name = "APF"
         
         start_txt = f"{name:<20} | {res['Time']:<8.2f} | {res['Energy']:<8.2f} | {res['Length']:<8.2f}"
@@ -233,7 +237,7 @@ def generate_plot(env, seed, agents_config, output_filename, title_suffix=""):
     plt.close(fig)
     print(f"Done. Saved to {output_filename}")
 
-def plot_specific_seed(seed):
+def plot_specific_seed(seed, include_rainbow=False):
     OBS_NUM = 10
     device = "cpu"
     
@@ -262,25 +266,23 @@ def plot_specific_seed(seed):
     d3qn_path = "pretrained_models/D3QN/best_model.zip"
     d3qn_model = DQN.load(d3qn_path, device=device) if os.path.exists(d3qn_path) else None
 
-    rainbow_path = "pretrained_models/Rainbow/seed_42/final_model.zip"
-    rainbow_model = None
-    if os.path.exists(rainbow_path):
-        try:
-            rainbow_model = QRDQN.load(rainbow_path, device=device) if QRDQN else DQN.load(rainbow_path, device=device)
-        except: pass
-
     apf_agent = APF_agent(env.robot.a, env.robot.w)
 
     agents_config = [
         ("Adaptive IQN (Ours)", iqn_agent, "iqn_adaptive", '#d62728', '-'),
         ("PPO", ppo_model, "ppo", '#1f77b4', '--'),
         ("D3QN", d3qn_model, "d3qn", '#2ca02c', '-.'),
-        ("Rainbow", rainbow_model, "rainbow", '#9467bd', (0, (3, 1, 1, 1))),
         ("APF", apf_agent, "apf", '#7f7f7f', ':')
     ]
 
     output_file = f"secs/figures/trajectory_strict_win_seed{seed}.png"
     generate_plot(env, seed, agents_config, output_file)
 
+import argparse
+
 if __name__ == "__main__":
-    plot_specific_seed(6)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=12, help="Seed to plot")
+    args = parser.parse_args()
+    
+    plot_specific_seed(args.seed)
