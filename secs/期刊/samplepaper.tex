@@ -45,65 +45,59 @@
 % \email{\{abc,lncs\}@uni-heidelberg.de}}
 % %
 \maketitle              % typeset the header of the contribution
-%
 \begin{abstract}
-This paper studies local, sensor-driven navigation for unmanned surface vehicles operating in unknown, time-varying current fields with dynamic obstacles. Conventional value-based deep reinforcement learning optimizes expected return and can underestimate rare but catastrophic failures caused by current--obstacle interactions. We propose Adaptive Risk-aware Implicit Quantile Network (IQN) that models the full return distribution and applies a CVaR-style risk distortion to emphasize tail outcomes during action selection. To balance safety and efficiency across heterogeneous scenes, we further introduce an adaptive risk mechanism that increases risk aversion online as the vehicle approaches sensed obstacles, while remaining near risk-neutral in open water. An energy-related penalty is incorporated into the reward to encourage smoother, energy-efficient control, and we report an energy consumption analysis. Experiments demonstrate that our method dominates the performance trade-off in dense dynamic environments (10 obstacles): Adaptive Risk-aware IQN achieves a \textbf{97\% success rate} (outperforming PPO's $\sim$95\%) while maintaining superior efficiency (surpassing PPO's speed and energy metrics). Compared to classical APF which can ensure safety but suffers from inefficiency in complex flow fields, the proposed approach provides a superior balance of safety, speed, and energy.
-
-\keywords{Unmanned surface vehicle, implicit quantile network, conditional value-at-risk, dynamic environment}
+Safe and efficient local navigation for unmanned surface vehicles (USVs) remains challenging in unknown, time-varying current fields with dynamic obstacles. Conventional deep reinforcement learning methods typically optimize expected return and may therefore underestimate rare but catastrophic failures caused by current--obstacle interactions. To address this issue, we propose \textbf{Adaptive Risk-aware Implicit Quantile Network (Adaptive Risk-aware IQN)}, a distributional reinforcement learning framework for sensor-driven USV navigation. Our method models the full return distribution with IQN and applies a CVaR-style risk distortion to emphasize adverse tail outcomes during action selection. To avoid excessive conservatism, we further design a distance-adaptive risk mechanism that increases risk aversion near obstacles while remaining nearly risk-neutral in open water. Experiments in dynamic marine environments show that our method achieves a superior balance between safety and efficiency, reaching a \textbf{97\% success rate} in the hardest setting while maintaining strong time and energy performance.
+\keywords{Unmanned surface vehicle, distributional reinforcement learning, implicit quantile network, conditional value-at-risk, dynamic environment}
 \end{abstract}
 %
 %
-%
 
-%第一段
 \section{Introduction}
 
-Operating autonomous surface vehicles in ocean and riverine settings is strongly affected by ambient currents, and achieving navigation that is both safe and efficient under flow disturbances remains challenging~\cite{ref1}.
-While recent studies have made progress on \emph{global} route planning for USVs by explicitly leveraging a known or forecasted current field~\cite{ref2,ref3,ref4}, far fewer works address the \emph{local}, sensor-driven navigation problem when the current is not provided \emph{a priori}.
-Motivated by real-world scenarios such as field competitions and fast-flowing river environments~\cite{ref5}, we study a local planning setting in which the vehicle must act using onboard perception, without advance knowledge of the flow field.
-Beyond unknown and time-varying currents, our environment further includes \emph{dynamic obstacles} (e.g., moving vessels or drifting objects), which increases outcome uncertainty and makes robustness to tail risks---rare but catastrophic safety violations---more critical.
-Fig.~\ref{fig:intro_overview} shows a representative dynamic-flow scenario: existing methods either fail to guarantee zero-collision safety (PPO) or leave residual collision risks, while classical algorithm (APF) struggle with efficiency. Our proposed adaptive IQN method reaches the goal both safely and efficiently.
+Autonomous surface vehicles (USVs) operating in ocean and riverine environments must cope with complex flow disturbances, where achieving both safety and efficiency remains a fundamental challenge~\cite{ref1}. 
+With the increasing deployment of USVs in real-world scenarios such as environmental monitoring, maritime operations, and field competitions, reliable navigation under uncertain dynamics has become a critical requirement. 
+In particular, local navigation in unknown and time-varying current fields poses significant challenges, as the vehicle must make decisions based solely on onboard perception without prior knowledge of the environment~\cite{ref5}. 
+This difficulty is further exacerbated by the presence of dynamic obstacles, which introduces highly stochastic interactions and increases the likelihood of rare but catastrophic failures.
 
+Reinforcement learning (RL) provides a promising paradigm for learning navigation policies from interaction data, enabling generalization to previously unseen environments without requiring explicit modeling of complex dynamics~\cite{ref6}. 
+In particular, deep reinforcement learning (DRL) has demonstrated strong performance in high-dimensional decision-making tasks, including robot navigation. 
+However, most existing DRL approaches optimize the \emph{expected return}, implicitly assuming that average performance is sufficient. 
+In safety-critical navigation scenarios, this assumption can lead to unreliable behavior, as rare but high-impact failures—such as collisions caused by flow--obstacle interactions—are largely ignored under expectation-based optimization.
+
+To better capture such uncertainty, distributional reinforcement learning has been proposed to model the \emph{full distribution} of returns rather than only their expectation~\cite{ref7}. 
+By representing the variability of outcomes, distributional methods enable risk-sensitive decision-making through techniques such as risk distortion~\cite{ref8}. 
+Nevertheless, existing approaches typically rely on fixed risk preferences, which fail to adapt to rapidly changing environments. 
+As a result, the learned policies may become overly conservative in safe regions or insufficiently cautious near hazards, leading to suboptimal trade-offs between safety and efficiency.
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figures/intro.png}
-  \caption{Navigation in uncertain flow fields with dynamic obstacles. This figure shows the Time-lapse evolution of different planners. 
-  Conventional risk-neutral DRL (PPO) often underestimates collision risks in dynamic interactions, leading to failure (dashed blue). 
-  Classical reactive methods (APF) ensure safety but can be trapped by flow disturbances (dotted gray). 
-  Our proposed \textit{Adaptive IQN} (solid red) anticipates potential hazards via distributional risk modeling and executes a proactive evasive maneuver to reach the goal safely.}
+  \includegraphics[width=0.85\textwidth]{figures/intro.png}
+  \caption{Navigation in uncertain flow fields with dynamic obstacles. Other methods either fail due to risk underestimation or are inefficient. Our Adaptive IQN proactively avoids hazards and reliably reaches the target.}
   \label{fig:intro_overview}
 \end{figure}
-
-Reinforcement learning offers a way to acquire control policies from interaction data, enabling generalization to previously unseen situations without requiring a complete environment model~\cite{ref6}.
-With deep neural networks, DRL becomes practical for high-dimensional sensory inputs, where policies can be executed efficiently via network inference.
-However, many widely used value-based DRL planners (e.g., DQN and its variants) primarily optimize the \emph{expected} return, which can be misaligned with safety in navigation tasks where failures are low-probability but high-impact, and where uncertainty is amplified by both currents and moving obstacles.
-
-Distributional reinforcement learning provides a complementary perspective by learning the \emph{full distribution} of returns rather than only their mean~\cite{ref7}.
-Modeling return distributions can better represent variability in action outcomes and can improve learning stability in stochastic environments.
-Moreover, risk distortions applied to the learned distributions allow the planner to explicitly emphasize unfavorable outcomes, offering a principled mechanism to tune collision sensitivity in practice~\cite{ref8}.
-This capability is particularly relevant when flow disturbances and dynamic obstacles jointly induce heavy-tailed outcome distributions.
-
-In this paper, we propose \textbf{Adaptive Risk-Aware IQN}, a distributional-RL framework for sensor-based USV navigation under unknown current fields with dynamic obstacles.
-The framework uses IQN to estimate action-conditioned return quantiles and selects actions via a risk-aware distortion that emphasizes adverse outcomes.
-We further introduce an adaptive procedure that adjusts risk sensitivity online, encouraging conservative behavior near hazards (e.g., in proximity to moving obstacles or in strong currents) while preserving efficiency in open regions.
-In addition, we incorporate an energy-related penalty into learning and provide an energy consumption analysis, demonstrating that the proposed framework can achieve safer navigation with lower energy usage.
-We benchmark against classical reactive local planners---Artificial Potential Fields (APF)~\cite{ref9,ref10} and Bug-type algorithms~\cite{ref11,ref12}---as well as standard risk-neutral DRL baselines, and we include stronger value-based variants such as D3QN in our comparisons.
+To address these challenges, we propose \textbf{Adaptive Risk-Aware IQN}, a distributional reinforcement learning framework for sensor-driven USV navigation under unknown current fields with dynamic obstacles. 
+The proposed framework models return distributions using Implicit Quantile Networks (IQN) and performs risk-aware action selection via a distortion mechanism that emphasizes adverse outcomes. 
+Furthermore, we introduce an adaptive risk modulation strategy that dynamically adjusts risk sensitivity according to environmental conditions, encouraging conservative behavior near hazards while maintaining efficient navigation in safer regions. 
+In addition, we incorporate an energy-aware objective into the learning process, enabling the agent to achieve safer navigation with reduced control effort. 
+Fig.~\ref{fig:intro_overview} illustrates a representative scenario, where conventional methods either fail due to risk underestimation or suffer from inefficiency, while our approach successfully achieves safe and efficient navigation.
 
 \smallskip
 \noindent The main contributions of this work are as follows:
+
 \begin{enumerate}
-    \item \textbf{A risk-aware navigation framework with reliable success rate.}
-    We proposed an adaptive IQN algorithm for dynamic marine environments, enabling the USV to make safer decisions under uncertainty. The proposed framework substantially improves navigation success rate and robustness when facing dynamic obstacles and unknown time-varying currents.
 
-    \item \textbf{An energy-aware objective for safer and more efficient navigation.}
-    We introduce an energy optimization term into the planning objective to explicitly reduce control effort during navigation. This design allows the robot to maintain strong safety performance while achieving lower energy consumption, which is critical for practical long-duration operation.
+\item \textbf{A risk-aware distributional reinforcement learning framework for USV navigation.}
+We propose an Adaptive Risk-Aware IQN framework that explicitly models return distributions and enables risk-sensitive decision-making, significantly improving robustness and navigation success rate in dynamic environments with unknown currents and moving obstacles.
 
-    \item \textbf{Extensive comparisons with diverse navigation baselines.}
-    We validate the proposed method through comprehensive experiments in dynamic environments and compare it with multiple navigation algorithms, including classical planners and state-of-the-art deep reinforcement learning baselines. Experimental results show that our method consistently achieves superior overall performance in terms of success rate, efficiency, and energy consumption.
+\item \textbf{An adaptive risk modulation mechanism.}
+We design a dynamic strategy that adjusts risk sensitivity online based on environmental context, allowing the agent to behave conservatively near hazards while maintaining efficient navigation in open regions.
+
+\item \textbf{An energy-aware navigation objective.}
+We introduce an energy optimization term into the learning objective, enabling the agent to reduce control effort while preserving strong safety performance, which is critical for long-duration deployment.
+
+\item \textbf{Extensive evaluation in dynamic flow environments.}
+We conduct comprehensive experiments and compare against classical planners and strong DRL baselines. Results demonstrate that our method consistently achieves superior performance in terms of safety, efficiency, and energy consumption.
+
 \end{enumerate}
-
-
-
 \section{Related Work}
 Classical reactive planners, learning-based navigation methods, and risk-sensitive Distributional RL have been widely studied for mobile robot and marine vehicle navigation. In our setting, the challenge is further amplified by the joint effect of dynamic obstacles and unknown, spatially varying current fields, which creates highly nonstationary and safety-critical local interactions.
 
@@ -155,7 +149,7 @@ r + \gamma \max_{a'} Q(s',a';\theta^-)
 \Big].
 \label{eq:dqn_loss}
 \end{equation}
-In our experiments, we employ D3QN---an advanced combination of DQN, Double DQN (DDQN), and Dueling architectures---as a representative risk-neutral baseline to provide a stronger, more comprehensive comparison against our method.
+In our experiments, we employ D3QN---an advanced combination of DQN, Double DQN, and Dueling architectures---as a representative risk-neutral baseline to provide a stronger, more comprehensive comparison against our method.
 
 \subsection{Distributional RL}
 \label{sec:method_distRL}
@@ -264,8 +258,8 @@ Episodes terminate upon reaching the goal, colliding with an obstacle, leaving t
 
 \subsection{Action Space}
 \label{sec:method_action}
-We discretize the control command as a change in the steering velocity $V_S$. Concretely, at each time step the agent selects an action $a_t=(a,w)$,
 
+We discretize the control command as a change in the steering velocity $V_S$. Concretely, at each time step the agent selects an action $a_t=(a,w)$.
 % -----------------------------
 % (2) Added: discrete-time update for V_S from (a,w)
 % -----------------------------
@@ -401,40 +395,42 @@ All learning-based models share identical observation encoders and are trained u
 \subsection{Results}
 \label{sec:results}
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{Experimental Results across different difficulty levels. The table is subdivided into two scenarios: (a) the \textbf{Medium Environment} with 8 dynamic obstacles, and (b) the \textbf{Hard Environment} with 10 dynamic obstacles. Out of bounds rate is the ratio of out-of-bounds failures to all episodes. Time and energy are averaged over successful episodes.}
 \label{tab:combined_results}
 \setlength{\tabcolsep}{3pt}
 \renewcommand{\arraystretch}{1.10}
 
-\multicolumn{5}{c}{(a) \textbf{Medium Environment} (8 Obstacles)}\\ \vspace{2pt}
 \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|c|cccc@{}}
 \hline
-\multicolumn{2}{c|}{Model} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
+\multicolumn{6}{c}{(a) \textbf{Medium Environment} (8 Obstacles)}\\
 \hline
-\multicolumn{2}{c|}{\textbf{Adaptive IQN (Ours)}} & \textbf{0.98} & \textbf{0.01} & \textbf{19.83} & \textbf{13.57} \\
+\multicolumn{2}{c|}{Model} & Success (\%) $\uparrow$ & O.O.B. (\%) $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\multicolumn{2}{c|}{PPO} & 0.95 & 0.03 & 20.18 & 14.08 \\
-\multicolumn{2}{c|}{D3QN} & 0.96 & 0.02 & 20.31 & 14.52 \\
-\multicolumn{2}{c|}{APF} & 0.93 & 0.02 & 23.57 & 17.29 \\
-\multicolumn{2}{c|}{BA} & 0.87 & 0.03 & 22.18 & 13.89 \\
+\multicolumn{2}{c|}{\textbf{Adaptive IQN (Ours)}} & \textbf{98.22} & \textbf{1.02} & \textbf{19.83} & \textbf{13.57} \\
+\hline
+\multicolumn{2}{c|}{PPO} & 95.36 & 3.52 & 20.18 & 14.08 \\
+\multicolumn{2}{c|}{D3QN} & 96.34 & 2.22 & 20.31 & 14.52 \\
+\multicolumn{2}{c|}{APF} & 93.76 & 2.64 & 23.57 & 17.29 \\
+\multicolumn{2}{c|}{BA} & 87.62 & 3.72 & 22.18 & 13.89 \\
 \hline
 \end{tabular*}
 
 \vspace{1em}
 
-\multicolumn{5}{c}{(b) \textbf{Hard Environment} (10 Obstacles)}\\ \vspace{2pt}
 \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|c|cccc@{}}
 \hline
-\multicolumn{2}{c|}{Model} & Success $\uparrow$ & O.O.B. $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
+\multicolumn{6}{c}{(b) \textbf{Hard Environment} (10 Obstacles)}\\
 \hline
-\multicolumn{2}{c|}{\textbf{Adaptive IQN (Ours)}} & \textbf{0.97} & \textbf{0.01} & \textbf{21.57} & \textbf{14.98} \\
+\multicolumn{2}{c|}{Model} & Success (\%) $\uparrow$ & O.O.B. (\%) $\downarrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-\multicolumn{2}{c|}{PPO} & 0.95 & 0.03 & 21.97 & 15.43 \\
-\multicolumn{2}{c|}{D3QN} & 0.96 & 0.02 & 21.78 & 15.82 \\
-\multicolumn{2}{c|}{APF} & 0.92 & 0.02 & 25.93 & 18.96 \\
-\multicolumn{2}{c|}{BA} & 0.81 & 0.08 & 23.94 & 14.22 \\
+\multicolumn{2}{c|}{\textbf{Adaptive IQN (Ours)}} & \textbf{97.58} & \textbf{1.54} & \textbf{21.57} & \textbf{14.98} \\
+\hline
+\multicolumn{2}{c|}{PPO} & 95.72 & 3.88 & 21.97 & 15.43 \\
+\multicolumn{2}{c|}{D3QN} & 96.04 & 2.10 & 21.78 & 15.82 \\
+\multicolumn{2}{c|}{APF} & 92.36 & 2.80 & 25.93 & 18.96 \\
+\multicolumn{2}{c|}{BA} & 81.24 & 8.04 & 23.94 & 14.22 \\
 \hline
 \end{tabular*}
 \end{table}
@@ -468,7 +464,7 @@ Adaptive IQN maintains minimal energy consumption (\textbf{14.98\,J}), consisten
 
 Table~\ref{tab:runtime} details the computational cost. Our method averages \textbf{0.43\,ms} per inference, well within the 10\,Hz control loop requirements.
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{Runtime comparison (Average per step).}
 \label{tab:runtime}
@@ -494,9 +490,9 @@ To provide deeper insight into the behavioral differences between risk-neutral a
   \includegraphics[width=\textwidth]{figures/trajectory_sequence_refined_seed0.png}
   \caption{Qualitative comparison of trajectory evolution in a complex dynamic environment (Seed 0).
   (a) Start ($T=0.00$s): All agents initialize in a flow field with approaching dynamic obstacles.
-  (b) Early Stage ($T=12.00$s): The risk-neutral \textbf{PPO} agent (dashed blue) optimizes for expected return and fails to account for the worst-case movement of the dynamic obstacles, resulting in a collision.
-  (c) Late Stage ($T=25.00$s): The \textbf{Adaptive IQN} agent (solid red) proactively identifies the high-risk region and executes a wide evasive maneuver.
-  (d) Final ($T=38.00$s): Adaptive IQN successfully reaches the goal. In contrast, reactive planners like \textbf{APF} (dotted gray) get trapped in local minima due to the complex flow-obstacle interaction, failing to progress.}
+  (b) Early Stage ($T=20.00$s): The risk-neutral \textbf{PPO} agent (dashed blue) optimizes for expected return and fails to account for the worst-case movement of the dynamic obstacles, resulting in a collision.
+  (c) Late Stage ($T=40.00$s): The \textbf{Adaptive IQN} agent (solid red) proactively identifies the high-risk region and executes a wide evasive maneuver.
+  (d) Final ($T=61.00$s): Adaptive IQN successfully reaches the goal.}
   \label{fig:traj_seq}
 \end{figure*}
 
@@ -520,7 +516,7 @@ For clarity, each variant is represented by whether a given component is enabled
 % requires in preamble:
 % \usepackage{amssymb}
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{Component ablation in the hard environment (10 obstacles).}
 \label{tab:ablation_components}
@@ -528,12 +524,12 @@ For clarity, each variant is represented by whether a given component is enabled
 \renewcommand{\arraystretch}{1.10}
 \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lcccccc@{}}
 \hline
-Variant & RS & AR & ET & Success rate $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
+Variant & RS & AR & ET & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
-V1 & $\times$     & $\times$     & $\checkmark$ & 0.91 & 22.17 & 16.39 \\
-V2 & $\checkmark$ & $\times$     & $\checkmark$ & 0.94 & 23.12 & 15.68 \\
-V3 & $\checkmark$ & $\checkmark$ & $\times$     & 0.96 & 21.61 & 19.87 \\
-\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{0.97} & \textbf{21.57} & \textbf{14.98} \\
+V1 & $\times$     & $\times$     & $\checkmark$ & 91.02 & 22.17 & 16.39 \\
+V2 & $\checkmark$ & $\times$     & $\checkmark$ & 94.08 & 23.12 & 15.68 \\
+V3 & $\checkmark$ & $\checkmark$ & $\times$     & 96.20 & 21.61 & 19.87 \\
+\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{97.24} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \end{tabular*}
 
@@ -543,61 +539,50 @@ V3 & $\checkmark$ & $\checkmark$ & $\times$     & 0.96 & 21.61 & 19.87 \\
 \end{table}
 
 Table~\ref{tab:ablation_components} shows that all three components contribute to the final performance.
- Comparing \textbf{V1} (which approximates a standard DQN with energy penalties) and \textbf{V2} shows that introducing risk-sensitive decision-making (using a fixed moderate risk level $\phi=0.50$) improves the overall success rate in cluttered environments (91.30\% $\to$ 94.20\%).
-Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success rate to 0.97 while reducing average time from 23.12s to 21.57s).
+ Comparing \textbf{V1} (which approximates a standard DQN with energy penalties) and \textbf{V2} shows that introducing risk-sensitive decision-making (using a fixed moderate risk level $\phi=0.50$) improves the overall success rate in cluttered environments (91\% $\to$ 94\%).
+Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success rate to 97\% while reducing average time from 23.12s to 21.57s).
 Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency, reducing average energy consumption from 19.87\,J to 14.98\,J while preserving high success.
 Overall, the full model achieves the best trade-off among success rate, time, and energy consumption.
 
 We further analyze whether the gain of the proposed method comes from simply using a conservative risk level or from adapting the threshold online according to obstacle proximity.
 To this end, we compare several fixed thresholds with the proposed adaptive rule across all difficulty levels (6, 8, and 10 obstacles) to provide a comprehensive evaluation.
 
-\begin{table}[htbp]
+\begin{table}[!htbp]
 \centering
 \caption{Effect of fixed and adaptive risk thresholds across Easy (6 obs), Medium (8 obs), and Hard (10 obs) environments.}
 \label{tab:ablation_phi}
 \setlength{\tabcolsep}{6pt}
 \renewcommand{\arraystretch}{1.10}
-
-\multicolumn{4}{c}{(a) \textbf{Easy Environment} (6 Obstacles)}\\ \vspace{2pt}
 \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|ccc@{}}
 \hline
 Risk Setting & Succ. (\%) $\uparrow$ & Time (s) $\downarrow$ & Ener. (J) $\downarrow$ \\
 \hline
-Fixed $\phi=0.25$ & 100 & 22.10 & 15.01 \\
-Fixed $\phi=0.50$ & 99 & 20.05 & 13.12 \\
-Fixed $\phi=0.75$ & 98 & 18.90 & 12.80 \\
-Fixed $\phi=1.00$ & 97 & 18.30 & 12.50 \\
+\hline
+\multicolumn{4}{c}{(a) \textbf{Easy Environment} (6 Obstacles)}\\
+\hline
+Fixed $\phi=0.25$ & 100.00 & 22.10 & 15.01 \\
+Fixed $\phi=0.50$ & 99.46 & 20.05 & 13.12 \\
+Fixed $\phi=0.75$ & 98.02 & 18.90 & 12.80 \\
+Fixed $\phi=1.00$ & 97.34 & 18.30 & 12.50 \\
 \textbf{Adaptive $\phi$} & \textbf{100} & \textbf{18.65} & \textbf{12.65} \\
 \hline
-\end{tabular*}
-
-\vspace{1em}
-
-\multicolumn{4}{c}{(b) \textbf{Medium Environment} (8 Obstacles)}\\ \vspace{2pt}
-\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|ccc@{}}
 \hline
-Risk Setting & Succ. (\%) $\uparrow$ & Time (s) $\downarrow$ & Ener. (J) $\downarrow$ \\
+\multicolumn{4}{c}{(b) \textbf{Medium Environment} (8 Obstacles)}\\
 \hline
-Fixed $\phi=0.25$ & 97 & 24.17 & 16.82 \\
-Fixed $\phi=0.50$ & 96 & 21.47 & 14.29 \\
-Fixed $\phi=0.75$ & 94 & 20.16 & 13.95 \\
-Fixed $\phi=1.00$ & 91 & 19.46 & 13.44 \\
+Fixed $\phi=0.25$ & 97.10 & 24.17 & 16.82 \\
+Fixed $\phi=0.50$ & 96.04 & 21.47 & 14.29 \\
+Fixed $\phi=0.75$ & 94.48 & 20.16 & 13.95 \\
+Fixed $\phi=1.00$ & 91.40 & 19.46 & 13.44 \\
 \textbf{Adaptive $\phi$} & \textbf{98} & \textbf{19.83} & \textbf{13.57} \\
 \hline
-\end{tabular*}
-
-\vspace{1em}
-
-\multicolumn{4}{c}{(c) \textbf{Hard Environment} (10 Obstacles)}\\ \vspace{2pt}
-\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}l|ccc@{}}
 \hline
-Risk Setting & Succ. (\%) $\uparrow$ & Time (s) $\downarrow$ & Ener. (J) $\downarrow$ \\
+\multicolumn{4}{c}{(c) \textbf{Hard Environment} (10 Obstacles)}\\
 \hline
-Fixed $\phi=0.25$ & 96 & 26.43 & 18.27 \\
-Fixed $\phi=0.50$ & 94 & 23.12 & 15.68 \\
-Fixed $\phi=0.75$ & 89 & 21.39 & 15.22 \\
-Fixed $\phi=1.00$ & 84 & 20.87 & 14.97 \\
-\textbf{Adaptive $\phi$} & \textbf{97} & \textbf{21.57} & \textbf{14.98} \\
+Fixed $\phi=0.25$ & 96.32 & 26.43 & 18.27 \\
+Fixed $\phi=0.50$ & 94.04 & 23.12 & 15.68 \\
+Fixed $\phi=0.75$ & 89.42 & 21.39 & 15.22 \\
+Fixed $\phi=1.00$ & 84.06 & 20.87 & 14.97 \\
+\textbf{Adaptive $\phi$} & \textbf{97.34} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \end{tabular*}
 \end{table}
@@ -613,6 +598,7 @@ First, risk-sensitive decision-making is important for robust navigation in comp
 Second, adaptive risk modulation is more effective than any single fixed threshold.
 Third, the energy-aware term contributes to lower control effort and better energy efficiency.
 Together, these results validate the design of the proposed method.
+
 
 
 \section{Conclusion}
