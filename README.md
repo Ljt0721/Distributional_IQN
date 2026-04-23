@@ -6,18 +6,6 @@ This repository provides the codes of our IROS 2023 paper [here](https://arxiv.o
 <img width="1000" height="340" src="cvar_distributions.png"> 
 </p>
 
-If you find this repository useful, please cite our paper
-```
-@INPROCEEDINGS{10342389,
-  author={Lin, Xi and McConnell, John and Englot, Brendan},
-  booktitle={2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 
-  title={Robust Unmanned Surface Vehicle Navigation with Distributional Reinforcement Learning}, 
-  year={2023},
-  volume={},
-  number={},
-  pages={6185-6191},
-  doi={10.1109/IROS55552.2023.10342389}}
-```
 
 ## 项目结构
 
