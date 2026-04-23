@@ -46,7 +46,7 @@
 % %
 \maketitle              % typeset the header of the contribution
 \begin{abstract}
-Safe and efficient local navigation for unmanned surface vehicles (USVs) remains challenging in unknown, time-varying current fields with dynamic obstacles. Conventional deep reinforcement learning methods typically optimize expected return and may therefore underestimate rare but catastrophic failures caused by current--obstacle interactions. To address this issue, we propose \textbf{Adaptive Risk-aware Implicit Quantile Network (Adaptive Risk-aware IQN)}, a distributional reinforcement learning framework for sensor-driven USV navigation. Our method models the full return distribution with IQN and applies a CVaR-style risk distortion to emphasize adverse tail outcomes during action selection. To avoid excessive conservatism, we further design a distance-adaptive risk mechanism that increases risk aversion near obstacles while remaining nearly risk-neutral in open water. Experiments in dynamic marine environments show that our method achieves a superior balance between safety and efficiency, reaching a \textbf{97\% success rate} in the hardest setting while maintaining strong time and energy performance.
+Safe and efficient local navigation for unmanned surface vehicles (USVs) remains challenging in unknown, time-varying current fields with dynamic obstacles. Conventional deep reinforcement learning methods typically optimize expected return and may therefore underestimate rare but catastrophic failures caused by current--obstacle interactions. To address this issue, we propose \textbf{Adaptive Risk-aware Implicit Quantile Network (Adaptive Risk-aware IQN)}, a distributional reinforcement learning framework for sensor-driven USV navigation. Our method models the full return distribution with IQN and applies a CVaR-style risk distortion to emphasize adverse tail outcomes during action selection. To avoid excessive conservatism, we further design a distance-adaptive risk mechanism that increases risk aversion near obstacles while remaining nearly risk-neutral in open water. Experiments in dynamic marine environments show that our method achieves a superior balance between safety and efficiency, reaching a \textbf{97.58\% success rate} in the hardest setting while maintaining strong time and energy performance.
 \keywords{Unmanned surface vehicle, distributional reinforcement learning, implicit quantile network, conditional value-at-risk, dynamic environment}
 \end{abstract}
 %
@@ -527,9 +527,9 @@ For clarity, each variant is represented by whether a given component is enabled
 Variant & RS & AR & ET & Success (\%) $\uparrow$ & Time (s) $\downarrow$ & Energy (J) $\downarrow$ \\
 \hline
 V1 & $\times$     & $\times$     & $\checkmark$ & 91.02 & 22.17 & 16.39 \\
-V2 & $\checkmark$ & $\times$     & $\checkmark$ & 94.08 & 23.12 & 15.68 \\
+V2 & $\checkmark$ & $\times$     & $\checkmark$ & 94.04 & 23.12 & 15.68 \\
 V3 & $\checkmark$ & $\checkmark$ & $\times$     & 96.20 & 21.61 & 19.87 \\
-\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{97.24} & \textbf{21.57} & \textbf{14.98} \\
+\textbf{V4 (Ours)} & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{97.58} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \end{tabular*}
 
@@ -540,7 +540,7 @@ V3 & $\checkmark$ & $\checkmark$ & $\times$     & 96.20 & 21.61 & 19.87 \\
 
 Table~\ref{tab:ablation_components} shows that all three components contribute to the final performance.
  Comparing \textbf{V1} (which approximates a standard DQN with energy penalties) and \textbf{V2} shows that introducing risk-sensitive decision-making (using a fixed moderate risk level $\phi=0.50$) improves the overall success rate in cluttered environments (91\% $\to$ 94\%).
-Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success rate to 97\% while reducing average time from 23.12s to 21.57s).
+Comparing \textbf{V2} and \textbf{V4} indicates that adaptive risk modulation provides a better balance between success and efficiency than using a fixed risk level (improving success rate to 97.58\% while reducing average time from 23.12s to 21.57s).
 Comparing \textbf{V3} and \textbf{V4} further shows that the energy-aware term helps reduce unnecessary control effort and improves overall energy efficiency, reducing average energy consumption from 19.87\,J to 14.98\,J while preserving high success.
 Overall, the full model achieves the best trade-off among success rate, time, and energy consumption.
 
@@ -573,7 +573,7 @@ Fixed $\phi=0.25$ & 97.10 & 24.17 & 16.82 \\
 Fixed $\phi=0.50$ & 96.04 & 21.47 & 14.29 \\
 Fixed $\phi=0.75$ & 94.48 & 20.16 & 13.95 \\
 Fixed $\phi=1.00$ & 91.40 & 19.46 & 13.44 \\
-\textbf{Adaptive $\phi$} & \textbf{98} & \textbf{19.83} & \textbf{13.57} \\
+\textbf{Adaptive $\phi$} & \textbf{98.22} & \textbf{19.83} & \textbf{13.57} \\
 \hline
 \hline
 \multicolumn{4}{c}{(c) \textbf{Hard Environment} (10 Obstacles)}\\
@@ -582,7 +582,7 @@ Fixed $\phi=0.25$ & 96.32 & 26.43 & 18.27 \\
 Fixed $\phi=0.50$ & 94.04 & 23.12 & 15.68 \\
 Fixed $\phi=0.75$ & 89.42 & 21.39 & 15.22 \\
 Fixed $\phi=1.00$ & 84.06 & 20.87 & 14.97 \\
-\textbf{Adaptive $\phi$} & \textbf{97.34} & \textbf{21.57} & \textbf{14.98} \\
+\textbf{Adaptive $\phi$} & \textbf{97.58} & \textbf{21.57} & \textbf{14.98} \\
 \hline
 \end{tabular*}
 \end{table}
@@ -604,7 +604,7 @@ Together, these results validate the design of the proposed method.
 \section{Conclusion}
 
 In this paper, we propose Adaptive Risk-Aware IQN, an IQN-based navigation framework for sensor-based Unmanned Surface Vehicle navigation in marine environments with no prior knowledge of the current flow field and obstacles, and further enhance safety via a CVaR-style risk distortion with a distance-adaptive risk mechanism. Compared with strong point-estimate baselines such as D3QN, our method shows more stable learning behavior and achieves a better balance between energy consumption and efficiency.
-Compared with state-of-the-art DRL baselines, our method dominates the performance trade-off in dense, dynamic environments. It attains a near-saturated \textbf{97\% success rate}, closing the safety gap seen in the highly efficient PPO (95\%) without sacrificing its speed or energy advantages ($\sim$21.57\,s, 14.98\,J). While classical planners (APF) provide a strong safety baseline (92\%), they do so at the cost of severe inefficiency in complex flows. The proposed distance-adaptive risk mechanism successfully bridges this divide, providing a robust, real-time solution for mission-critical marine autonomy.
+Compared with state-of-the-art DRL baselines, our method dominates the performance trade-off in dense, dynamic environments. It attains a near-saturated \textbf{97.58\% success rate}, closing the safety gap seen in the highly efficient PPO (95.72\%) without sacrificing its speed or energy advantages ($\sim$21.57\,s, 14.98\,J). While classical planners (APF) provide a strong safety baseline (92.36\%), they do so at the cost of severe inefficiency in complex flows. The proposed distance-adaptive risk mechanism successfully bridges this divide, providing a robust, real-time solution for mission-critical marine autonomy.
 
 
 
